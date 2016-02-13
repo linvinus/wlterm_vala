@@ -63,8 +63,8 @@ namespace Tsm {
 			   string format,
 			   va_list args);
          
-    [CCode (cname = "tsm_vte_write_cb")] //, instance_pos = 1.9
-    public delegate void Tsmvte_write_cb(Vte vte,
+    [CCode (cname = "tsm_vte_write_cb", has_target = false)] //, instance_pos = 1.9
+    public delegate void Tsmvte_write_cb(Tsm.Vte vte,
 				  string u8,
 				  size_t len,
 				  void* data);
@@ -170,14 +170,17 @@ public delegate  int Tsm_screen_draw_cb (Screen screen,
 
 //~     [CCode (cheader_filename = "libtsm.h")]
     [Compact]
-    [CCode (cname = "tsm_vte", cprefix = "tsm_vte_", ref_function = "tsm_vte_ref", unref_function = "tsm_vte_unref")]
+    [CCode (cname = "struct tsm_vte",
+            cprefix = "tsm_vte_",
+            ref_function = "tsm_vte_ref",
+            unref_function = "tsm_vte_unref",
+            ref_function_void = true)]
     public class Vte {
-      [CCode (cname = "tsm_screen_new")]
-      public int Vte_new(out Vte vte, 
-          Tsmvte_write_cb write_cb, void* data,
-          Tsmlog log, void* log_data);
-//~       public void ref(struct tsm_vte *vte);
-//~       public void unref(struct tsm_vte *vte);
+      [CCode (cname = "tsm_vte_new")]
+      public static int Vte_new(out unowned Vte vte,
+          Screen screen,
+          Tsmvte_write_cb? write_cb, void* data,
+          Tsmlog? log, void* log_data);
 
       public int set_palette(string palette);
 
