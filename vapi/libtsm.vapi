@@ -23,14 +23,34 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+
+[CCode (cname = "xkb_keysym_to_utf32")]
+extern uint32 xkb_keysym_to_utf32(uint key);
+
+
 [CCode (lower_case_cprefix = "tsm_", cheader_filename = "libtsm.h")]
 namespace Tsm {
+
+    /* keep in sync with shl_xkb_mods */
+    [CCode (cname = "tsm_vte_modifier", cprefix = "TSM_", has_type_id = false)]
+    enum Vte_modifier {
+      SHIFT_MASK		= (1 << 0),
+      LOCK_MASK		= (1 << 1),
+      CONTROL_MASK	= (1 << 2),
+      ALT_MASK		= (1 << 3),
+      LOGO_MASK		= (1 << 4)
+    }
+    [CCode (cname = "TSM_VTE_INVALID")]
+    const uint32 TSM_VTE_INVALID;
+
 //~ 	tsm_ucs4_get_width;
 //~ 	tsm_ucs4_to_utf8;
 //~ 	tsm_ucs4_to_utf8_alloc;
 //~   struct tsm_vte *vte;
 
-    [CCode (cname = "tsm_screen_attr", destroy_function = "")]    
+    static char *ucs4_to_utf8_alloc(uint32* ucs4, size_t len, out size_t len_out);
+
+    [CCode (cname = "struct tsm_screen_attr", destroy_function = "")]    
     public struct screen_attr {
       public int8 fccode;			/* foreground color code or <0 for rgb */
       public int8 bccode;			/* background color code or <0 for rgb */
@@ -53,8 +73,8 @@ namespace Tsm {
     }
 
 
-    [CCode (cname = "tsm_log_t", has_target = false)]
-    public delegate void Tsmlog(void* data,
+    [CCode (cname = "tsm_log_t",instance_pos = 0)]
+    public delegate void Tsmlog(
 			   string file,
 			   int line,
 			   string func,
@@ -63,11 +83,10 @@ namespace Tsm {
 			   string format,
 			   va_list args);
          
-    [CCode (cname = "tsm_vte_write_cb", has_target = false)] //, instance_pos = 1.9
+    [CCode (cname = "tsm_vte_write_cb")] //, instance_pos = 1.9
     public delegate void Tsmvte_write_cb(Tsm.Vte vte,
-				  string u8,
-				  size_t len,
-				  void* data);
+				  char* u8,
+				  size_t len);
 
     [SimpleType]
     [CCode (cname = "tsm_symbol_t", has_type_id = false)]
@@ -80,17 +99,16 @@ namespace Tsm {
     }
 
 
-[CCode (cname = "tsm_screen_draw_cb")]
+[CCode (cname = "tsm_screen_draw_cb",instance_pos = -1)]
 public delegate  int Tsm_screen_draw_cb (Screen screen,
 				   uint32 id,
-				   uint32 ch,
+				   uint32* ch,
 				   size_t len,
 				   uint width,
 				   uint posx,
 				   uint posy,
 				   screen_attr attr,
-				   Tsmage age,
-				   void* data);
+				   Tsmage age );
 
 
   [Compact]
@@ -102,7 +120,7 @@ public delegate  int Tsm_screen_draw_cb (Screen screen,
     public class Screen {
       
       [CCode (cname = "tsm_screen_new")]
-      public static int Screen_new([CCode (type = "struct tsm_screen**")] out unowned Screen screen,Tsmlog? log, void* log_data);
+      public static int Screen_new( out Screen screen,Tsmlog log); //[CCode (type = "struct tsm_screen**")]
 //~       [CCode (cname = "tsm_screen_ref")]
 //~       public void ref();
 //~       [CCode (cname = "tsm_screen_unref")]
@@ -164,8 +182,7 @@ public delegate  int Tsm_screen_draw_cb (Screen screen,
       public void selection_start(uint posx, uint posy);
       public void selection_target(uint posx, uint posy);
       public int selection_copy([CCode (type = "char**")] out string text);
-
-      public Tsmage draw( Tsm_screen_draw_cb draw_cb, void* data);
+      public Tsmage draw( Tsm_screen_draw_cb draw_cb);
     }//Screen
 
 //~     [CCode (cheader_filename = "libtsm.h")]
@@ -177,16 +194,16 @@ public delegate  int Tsm_screen_draw_cb (Screen screen,
             ref_function_void = true)]
     public class Vte {
       [CCode (cname = "tsm_vte_new")]
-      public static int Vte_new(out unowned Vte vte,
+      public static int Vte_new(out Vte vte,
           Screen screen,
-          Tsmvte_write_cb? write_cb, void* data,
-          Tsmlog? log, void* log_data);
+          Tsmvte_write_cb write_cb,
+          Tsmlog log);
 
       public int set_palette(string palette);
 
       public void reset();
       public void hard_reset();
-      public void input(uchar[] u8, size_t len);
+      public void input(uchar* u8, size_t len);
       public bool handle_keyboard(uint32 keysym,
                  uint32 ascii, uint mods,
                  uint32 unicode);

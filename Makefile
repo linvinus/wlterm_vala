@@ -42,7 +42,7 @@ endif
 VTE ?= $(shell pkg-config  --exists vte-2.91 && echo 2.91)
 VTE ?= $(shell pkg-config  --exists vte-2.90 && echo 2.90)
 
-VALA_FLAGS += --vapidir ./vapi --pkg libtsm --pkg posix 
+VALA_FLAGS += --vapidir ./vapi --pkg libtsm -X -Iexternal/ --pkg shl_pty --pkg posix  --pkg gtk+-3.0 --pkg gdk-x11-3.0 --pkg cairo -X -lxkbcommon
 #--pkg gtk+-3.0 --pkg gdk-x11-3.0 --pkg cairo --pkg posix --pkg gmodule-2.0
 
 
@@ -57,7 +57,7 @@ VALA_FLAGS += --vapidir ./vapi --pkg libtsm --pkg posix
 #DESTDIR?=
 PREFIX?=/usr
 
-VALA_FILES  =   main.vala
+VALA_FILES  =  external/shl_pty.c  main.vala
 
 #VALA_FLAGS += --pkg gnome-keyring-1 -D HAVE_QLIST
 #VALA_FILES += 	altyo_quick_connectios.vala
