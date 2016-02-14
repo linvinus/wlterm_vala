@@ -48,9 +48,10 @@ namespace Tsm {
 //~ 	tsm_ucs4_to_utf8_alloc;
 //~   struct tsm_vte *vte;
 
-    static char *ucs4_to_utf8_alloc(uint32* ucs4, size_t len, out size_t len_out);
+    static size_t ucs4_to_utf8(uint32* ucs4, string data_out);
+    static string ucs4_to_utf8_alloc(uint32* ucs4, size_t len, out size_t len_out);
 
-    [CCode (cname = "struct tsm_screen_attr", destroy_function = "")]    
+    [CCode (cname = "struct tsm_screen_attr", destroy_function = "")]
     public struct screen_attr {
       public int8 fccode;			/* foreground color code or <0 for rgb */
       public int8 bccode;			/* background color code or <0 for rgb */
@@ -82,7 +83,7 @@ namespace Tsm {
 			   uint sev,
 			   string format,
 			   va_list args);
-         
+
     [CCode (cname = "tsm_vte_write_cb")] //, instance_pos = 1.9
     public delegate void Tsmvte_write_cb(Tsm.Vte vte,
 				  char* u8,
@@ -118,7 +119,7 @@ public delegate  int Tsm_screen_draw_cb (Screen screen,
          unref_function = "tsm_screen_unref",
          ref_function_void = true)]
     public class Screen {
-      
+
       [CCode (cname = "tsm_screen_new")]
       public static int Screen_new( out Screen screen,Tsmlog log); //[CCode (type = "struct tsm_screen**")]
 //~       [CCode (cname = "tsm_screen_ref")]

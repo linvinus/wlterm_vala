@@ -26,7 +26,7 @@ class term_t {
 //~   Gtk.EventBox tarea;
   Cairo.ImageSurface terminal_db_image;
 	Cairo.Context terminal_db_cr;
-  Pango.Layout font_layout;
+//~   Pango.Layout font_layout;
   bool force_redraw=false;//force redraw after resize
 
 	uint cell_width;
@@ -255,8 +255,8 @@ class term_t {
               bb = attr.bb;
             }
 
-             char * val;
-             size_t ulen=0;
+
+
 //~              print("this.screen.draw [%s] len=%d width=%d posx=%d posx=%d\n",(string)ch,(int)len,(int)width,(int)posx,(int)posy);
 //~              cr.move_to(posx*10, posy*20);
 
@@ -271,19 +271,38 @@ class term_t {
 
             if(len>0){
               //text
-              this.terminal_db_cr.move_to(posx*this.cell_width, posy*this.cell_height);
+              this.terminal_db_cr.save();
+              if(ch=="")ch=" ";
+
+              size_t ulen=0;
+              string  cval = Tsm.ucs4_to_utf8_alloc(ch, len, out ulen);
+              var val=cval.substring(0,(long)ulen);
+
+              this.terminal_db_cr.select_font_face ( "Monospace",
+                  Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
+//~                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
+              this.terminal_db_cr.set_font_size ( (14 ));
+
+
+
+              Cairo.TextExtents extents;
+              this.terminal_db_cr.text_extents (val, out extents);
+              var x =(posx*this.cell_width)+(this.cell_width/2)-(extents.width/2 + extents.x_bearing);
+              var y = (posy*this.cell_height)+(this.cell_height/2) - (extents.height/2 + extents.y_bearing);
+              this.terminal_db_cr.move_to(x, y);
+//~               this.terminal_db_cr.move_to((posx*this.cell_width), (posy*this.cell_height)+(this.cell_height/2) - (extents.height/2 + extents.y_bearing));
+//~               this.terminal_db_cr.move_to((posx*this.cell_width), (posy*this.cell_height));
               this.terminal_db_cr.set_source_rgb(
                        fr / 255.0,
                        fg / 255.0,
                        fb / 255.0);
 
-                if(ch=="")ch=" ";
+                this.terminal_db_cr.show_text(val);//(string)val
 
-                val = Tsm.ucs4_to_utf8_alloc(ch, len, out ulen);
+//~                 font_layout.set_text((string)val, (int)ulen);
 
-                font_layout.set_text((string)val, (int)ulen);
-
-                Pango.cairo_show_layout(this.terminal_db_cr, font_layout);
+//~                 Pango.cairo_show_layout(this.terminal_db_cr, font_layout);
+                this.terminal_db_cr.restore();
               }
         return 0;
         });
@@ -486,10 +505,10 @@ class term_t {
       this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.ARGB32, (int)this.width, (int)this.height);
       this.terminal_db_cr    = new Cairo.Context (this.terminal_db_image);
 
-      this.font_layout = Pango.cairo_create_layout(terminal_db_cr);
-      this.font_layout.set_font_description(this.font_desc);
-      this.font_layout.set_height(0);
-      this.font_layout.set_spacing(0);
+//~       this.font_layout = Pango.cairo_create_layout(terminal_db_cr);
+//~       this.font_layout.set_font_description(this.font_desc);
+//~       this.font_layout.set_height(0);
+//~       this.font_layout.set_spacing(0);
 
       this.force_redraw=true;//redraw whole window
 
