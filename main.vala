@@ -14,7 +14,7 @@ class term_t {
   Shlpty.Bridge pty_bridge;
   IOChannel bridge_chan;
   uint bridge_src;
-  GLib.Source pty_idle;
+//~   GLib.Source pty_idle;
   Shlpty.Shlpty pty;
   uint child_src;
   uint pty_idle_src=0;
@@ -26,7 +26,7 @@ class term_t {
 //~   Gtk.EventBox tarea;
   Cairo.ImageSurface terminal_db_image;
 	Cairo.Context terminal_db_cr;
-//~   Pango.Layout font_layout;
+  Pango.Layout font_layout;
   bool force_redraw=false;//force redraw after resize
 
 	uint cell_width;
@@ -51,11 +51,12 @@ class term_t {
     GLib.stderr.printf( "\n");
   }
 
+  /*stdin мы пишем в терминал с клавиатуры, потом дёргаем term_bridge_cb*/
   public void my_write_cb(Tsm.Vte vte,
 				  char* u8,
 				  size_t len){
   int r;
-
+  debug("my_write_cb (%d) \"%s\"",(int)len,((string)u8).substring(0,(long)len));
 	r = this.pty.write(u8, len);
 	if (r < 0)
 		printf("OOM in pty-write (%d)", r);
@@ -71,17 +72,19 @@ class term_t {
 
   bool term_bridge_cb (IOChannel source, IOCondition condition) {
     int r;
-
+    debug("term_bridge_cb");
     r = this.pty_bridge.dispatch(0);
     if (r < 0)
       print("bridge dispatch failed (%d)", r);
     return true;
   }
 
+  /*stdout терминал нам пишет, сначала об этом узнаёт term_bridge_cb*/
   public void term_read_cb(Shlpty.Shlpty shelpty, char *u8,size_t len){
 //~     printf("new char:%s\n",(string)u8);
     this.vte.input(u8, len);
     this.tarea.queue_draw();
+    debug("term_read_cb (%d) \"%s\"",(int)len,((string)u8).substring(0,(long)len));
   }
 
   void term_notify_resize()
@@ -98,75 +101,8 @@ class term_t {
   }
 
 
-  int screen_draw_cb (Tsm.Screen screen,
-				   uint32 id,
-				   uint32 ch,
-				   size_t len,
-				   uint width,
-				   uint posx,
-				   uint posy,
-				   Tsm.screen_attr attr,
-				   Tsm.Tsmage age ){
-
-//~         const struct wlt_draw_ctx *ctx = data;
-//~         struct wlt_renderer *rend = ctx->rend;
-//~         uint8 fr, fg, fb, br, bg, bb;
-//~         uint x, y;
-//~         struct wlt_glyph *glyph;
-//~         bool skip;
-//~         int r;
-
-//~         x = posx * ctx->cell_width;
-//~         y = posy * ctx->cell_height;
-
-        /* If the cell is inside of the dirty-region *and* our age and the
-         * cell age is non-zero *and* the cell-age is smaller than our age,
-         * then skip drawing as it's already on-screen. */
-//~         skip = overlap(ctx, x, y, x + ctx->cell_width, y + ctx->cell_height);
-//~         skip = skip && age && rend->age && age <= rend->age;
-
-//~         if (skip && !ctx->debug)
-//~           return 0;
-
-        /* invert colors if requested */
-//~         if (attr->inverse) {
-//~           fr = attr->br;
-//~           fg = attr->bg;
-//~           fb = attr->bb;
-//~           br = attr->fr;
-//~           bg = attr->fg;
-//~           bb = attr->fb;
-//~         } else {
-//~           fr = attr->fr;
-//~           fg = attr->fg;
-//~           fb = attr->fb;
-//~           br = attr->br;
-//~           bg = attr->bg;
-//~           bb = attr->bb;
-//~         }
-
-        /* !len means background-only */
-//~         if (!len) {
-//~           wlt_renderer_fill(rend, x, y, ctx->cell_width * cwidth,
-//~                 ctx->cell_height, br, bg, bb);
-//~         } else {
-//~           r = wlt_face_render(ctx->face, &glyph, id, ch, len, cwidth);
-//~           if (r < 0)
-//~             wlt_renderer_fill(rend, x, y, ctx->cell_width * cwidth,
-//~                   ctx->cell_height, br, bg, bb);
-//~           else
-//~             wlt_renderer_blend(rend, glyph, x, y,
-//~                    fr, fg, fb, br, bg, bb);
-//~         }
-
-//~         if (!skip && ctx->debug)
-//~           wlt_renderer_highlight(rend, x, y, ctx->cell_width * cwidth,
-//~                      ctx->cell_height);
-
-        return 0;
-    }//screen_draw_cb
-
   bool term_draw_cb (Gtk.Widget    widget,Cairo.Context cr2){
+      debug("term_draw_cb");
       int64 start, end;
       if(!this.initialized) return false;
       start=GLib.get_monotonic_time();
@@ -210,8 +146,8 @@ class term_t {
       x2 /= this.cell_width;
       y1 /= this.cell_height;
       y2 /= this.cell_height;
-      x1-=1;x2+=1;
-      y1-=1;y2+=1;
+      x1=(int)x1; x2+=0.5; x2=(int)x2;
+      y1=(int)y1; y2+=0.5; y2=(int)y2;
 
 //~       print("term_draw_cb l=%f t=%f r=%f b=%f prev_age=%d\n",x1,y1,x2,y2,(int)this.prev_age);
 //~     	Tsm.Tsmage age = this.screen.draw(screen_draw_cb);
@@ -278,30 +214,33 @@ class term_t {
               string  cval = Tsm.ucs4_to_utf8_alloc(ch, len, out ulen);
               var val=cval.substring(0,(long)ulen);
 
-              this.terminal_db_cr.select_font_face ( "Monospace",
-                  Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
+//~               this.terminal_db_cr.select_font_face ( "Monospace",
+//~                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
 //~                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
-              this.terminal_db_cr.set_font_size ( (14 ));
+//~               this.terminal_db_cr.set_font_size ( (14 ));
 
 
 
-              Cairo.TextExtents extents;
-              this.terminal_db_cr.text_extents (val, out extents);
-              var x =(posx*this.cell_width)+(this.cell_width/2)-(extents.width/2 + extents.x_bearing);
-              var y = (posy*this.cell_height)+(this.cell_height/2) - (extents.height/2 + extents.y_bearing);
-              this.terminal_db_cr.move_to(x, y);
+//~               Cairo.TextExtents extents;
+//~               this.terminal_db_cr.text_extents (val, out extents);
+//~               var x =(posx*this.cell_width)+(this.cell_width/2)-(extents.width/2 + extents.x_bearing);
+//~               var y = (posy*this.cell_height)+(this.cell_height/2) - (extents.height/2 + extents.y_bearing);
+//~               this.terminal_db_cr.move_to(x, y);
 //~               this.terminal_db_cr.move_to((posx*this.cell_width), (posy*this.cell_height)+(this.cell_height/2) - (extents.height/2 + extents.y_bearing));
-//~               this.terminal_db_cr.move_to((posx*this.cell_width), (posy*this.cell_height));
+              this.terminal_db_cr.move_to((posx*this.cell_width), (posy*this.cell_height));
               this.terminal_db_cr.set_source_rgb(
                        fr / 255.0,
                        fg / 255.0,
                        fb / 255.0);
 
-                this.terminal_db_cr.show_text(val);//(string)val
+//~                 this.terminal_db_cr.show_text(val);//(string)val
 
-//~                 font_layout.set_text((string)val, (int)ulen);
+                font_layout.set_text(val, (int)ulen);
+//~                 Pango.cairo_update_layout(this.terminal_db_cr,font_layout);
+//~                 font_layout.add_to_cairo_context(this.terminal_db_cr);
+//~                 this.terminal_db_cr.stroke();
 
-//~                 Pango.cairo_show_layout(this.terminal_db_cr, font_layout);
+                Pango.cairo_show_layout(this.terminal_db_cr, font_layout);
                 this.terminal_db_cr.restore();
               }
         return 0;
@@ -318,7 +257,7 @@ class term_t {
 //~     widget.get_window ().end_paint();//notify for single buffer mode
 
     end = GLib.get_monotonic_time();
-    if (1==1)
+    if (1==0)
       print("draw: %lldms widg=%d\n", (end - start) / 1000,(int)widget);
 
     this.force_redraw=false;
@@ -332,17 +271,19 @@ class term_t {
       /*"/usr/local/bin/debugaltyo.sh",*/
       "-il",
       null
-    };
+      };
 
     GLib.Environment.set_variable("TERM", "xterm-256color", true);
 //~     execve(argv[0], argv, environ);
     printf("Starting %s",argv[0]);
     Posix.execv(argv[0], argv);
     exit(1);
+
   }//term_run_child
 
   void term_child_exit_cb(Pid pid, int status)
   {
+    debug("term_child_exit_cb");
     GLib.Process.close_pid(pid);
     this.child_src = 0;
     Gtk.main_quit();
@@ -427,7 +368,7 @@ class term_t {
       this.bridge_src = this.bridge_chan.add_watch( GLib.IOCondition.IN,
                 this.term_bridge_cb);
 
-      this.pty_idle = new GLib.IdleSource();
+//~       this.pty_idle = new GLib.IdleSource();
 
       this.start_terminal();
 
@@ -473,6 +414,7 @@ class term_t {
       this.win.key_press_event.connect((e)=>{
           uint32 ucs4;
           uint mods = 0;
+          debug("key_press_event");
 
           if ( (e.state & Gdk.ModifierType.SHIFT_MASK) == Gdk.ModifierType.SHIFT_MASK)
             mods |= Tsm.Vte_modifier.SHIFT_MASK;
@@ -505,10 +447,10 @@ class term_t {
       this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.ARGB32, (int)this.width, (int)this.height);
       this.terminal_db_cr    = new Cairo.Context (this.terminal_db_image);
 
-//~       this.font_layout = Pango.cairo_create_layout(terminal_db_cr);
-//~       this.font_layout.set_font_description(this.font_desc);
-//~       this.font_layout.set_height(0);
-//~       this.font_layout.set_spacing(0);
+      this.font_layout = Pango.cairo_create_layout(terminal_db_cr);
+      this.font_layout.set_font_description(this.font_desc);
+      this.font_layout.set_height(0);
+      this.font_layout.set_spacing(0);
 
       this.force_redraw=true;//redraw whole window
 
@@ -525,7 +467,22 @@ class term_t {
   }
 }
 
+static void print_handler(string? domain, LogLevelFlags flags, string message) {
+		printf("domain:%s message:%s\n",domain,message);
+		GLib.stdout.flush();
+	    }
+
 int main (string[] argv) {
+
+					Log.set_handler(null,
+						LogLevelFlags.LEVEL_MASK &
+						(LogLevelFlags.LEVEL_DEBUG |
+						LogLevelFlags.LEVEL_MESSAGE |
+						LogLevelFlags.LEVEL_WARNING |
+						LogLevelFlags.LEVEL_INFO |
+						LogLevelFlags.LEVEL_CRITICAL), print_handler);
+
+
   Gtk.init(ref argv);
   term_t term = new term_t();
   Gtk.main();
