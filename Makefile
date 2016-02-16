@@ -20,7 +20,7 @@ endif
 
 CHANGELOG_TAG=${shell grep -m 1 "^altyo" ./debian/changelog | sed 's/.*(//' | sed 's/).*$$//'| sed 's/~/_/' | sed 's/:/%/'}
 GIT_HASH=${shell which git >/dev/null && git log -1 --pretty=format:%h}
-VALA_FLAGS ?= 
+VALA_FLAGS ?=
 
 #use tmpfs for ssd hard drive
 TMPFS=$(shell ls -d ./tmpfs 2>/dev/null)
@@ -42,7 +42,7 @@ endif
 VTE ?= $(shell pkg-config  --exists vte-2.91 && echo 2.91)
 VTE ?= $(shell pkg-config  --exists vte-2.90 && echo 2.90)
 
-VALA_FLAGS += --vapidir ./vapi --pkg libtsm -X -Iexternal/ --pkg shl_pty --pkg posix  --pkg gtk+-3.0 --pkg gdk-x11-3.0 --pkg cairo -X -lxkbcommon
+VALA_FLAGS += --vapidir ./vapi --pkg libtsm -X -Iexternal/ --pkg shl_pty --pkg posix  --pkg gtk+-3.0 --pkg gdk-x11-3.0 --pkg cairo -X -lxkbcommon --pkg shm
 #--pkg gtk+-3.0 --pkg gdk-x11-3.0 --pkg cairo --pkg posix --pkg gmodule-2.0
 
 
@@ -74,7 +74,7 @@ source: data/altyo.c
 
 #data/altyo.c: data/altyo.gresource.xml data/altyo.svg $(GLADE_FILES)
 #	glib-compile-resources --sourcedir=./data --generate-source ./data/altyo.gresource.xml
-	
+
 clean:
 	rm *.c *.h || true
 	rm ./altyo || true

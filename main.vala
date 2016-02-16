@@ -4,11 +4,88 @@ using Posix;
 //~ extern int execve(string path, string[] arg, string[] environ);
 
 
-class terminal_renderer {
-  HashTable<string, int> glyphs;
-}
+class Term_dbus_client {
+  Gtk.Window win;
+  Gtk.DrawingArea tarea;
+//~   Gtk.EventBox tarea;
 
-class term_t {
+  public Term_dbus_client() {
+      int shmid;
+      char *data;
+      /* connect to (and possibly create) the segment: */
+      if ((shmid = Shm.get(888222, 64, 0644 | IPC.CREAT)) == -1) {
+          printf("shmget");
+          exit(1);
+      }
+      shmctl(shmid, IPC_RMID, NULL);
+      /* attach to the segment to get a pointer to it: */
+      data = Shm.at(shmid, (void *)0, 0);
+      if (data == (char *)(-1)) {
+          printf("shmat");
+          exit(1);
+      }
+
+    /* detach from the segment: */
+    if (Shm.dt(data) == -1) {
+        printf("shmdt");
+        exit(1);
+    }
+
+      this.tarea = new Gtk.DrawingArea ();
+      this.tarea.set_has_window (false);
+      this.tarea.set_app_paintable(true);
+      this.tarea.set_double_buffered(false);
+//~       this.tarea.set_reallocate_redraws(false);
+
+//~       this.tarea.draw.connect(this.term_draw_cb);
+
+      this.win = new Gtk.Window ();
+      this.win.set_app_paintable(true);
+      this.win.set_double_buffered(false);
+      this.win.destroy.connect(Gtk.main_quit);
+
+//~       this.win.configure_event.connect(this.term_configure_cb);
+
+      this.win.set_reallocate_redraws(false);
+      this.win.add(this.tarea);
+
+      this.win.key_press_event.connect((e)=>{
+          uint32 ucs4;
+          uint mods = 0;
+          debug("key_press_event");
+
+          if ( (e.state & Gdk.ModifierType.SHIFT_MASK) == Gdk.ModifierType.SHIFT_MASK)
+            mods |= Tsm.Vte_modifier.SHIFT_MASK;
+          if ( (e.state & Gdk.ModifierType.LOCK_MASK) == Gdk.ModifierType.LOCK_MASK)
+            mods |= Tsm.Vte_modifier.LOCK_MASK;
+          if ( (e.state & Gdk.ModifierType.CONTROL_MASK) == Gdk.ModifierType.CONTROL_MASK)
+            mods |= Tsm.Vte_modifier.CONTROL_MASK;
+          if ( (e.state & Gdk.ModifierType.MOD1_MASK) == Gdk.ModifierType.MOD1_MASK)
+            mods |= Tsm.Vte_modifier.ALT_MASK;
+          if ( (e.state & Gdk.ModifierType.MOD4_MASK) == Gdk.ModifierType.MOD4_MASK)
+            mods |= Tsm.Vte_modifier.LOGO_MASK;
+
+          ucs4 = xkb_keysym_to_utf32(e.keyval);
+          if (ucs4 == 0)
+            ucs4 = Tsm.TSM_VTE_INVALID;
+
+//~           if (this.vte.handle_keyboard(e.keyval, 0, mods, ucs4)) {
+//~             this.screen.sb_reset();
+//~             return true;
+//~           }
+
+          return false;
+        });
+
+      this.win.show_all();
+
+  }//constructor Term_dbus_client
+
+}//class Term_dbus_client
+
+//~ [DBus (name = "org.example.Demo")]
+
+class Term_dbus_server {
   Tsm.Screen screen;
   Tsm.Vte vte;
   Shlpty.Bridge pty_bridge;
@@ -21,9 +98,7 @@ class term_t {
   Tsm.Tsmage prev_age=0;
 
   Pango.FontDescription font_desc;
-  Gtk.Window win;
-  Gtk.DrawingArea tarea;
-//~   Gtk.EventBox tarea;
+
   Cairo.ImageSurface terminal_db_image;
 	Cairo.Context terminal_db_cr;
   Pango.Layout font_layout;
@@ -83,7 +158,9 @@ class term_t {
   public void term_read_cb(Shlpty.Shlpty shelpty, char *u8,size_t len){
 //~     printf("new char:%s\n",(string)u8);
     this.vte.input(u8, len);
-    this.tarea.queue_draw();
+
+    debug("!!!!this.tarea.queue_draw();");
+
     debug("term_read_cb (%d) \"%s\"",(int)len,((string)u8).substring(0,(long)len));
   }
 
@@ -336,7 +413,7 @@ class term_t {
   }
 
   //constructor
-  public term_t(){
+  public Term_dbus_server(){
 
 	string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@!\"$%&/()=?\\}][{°^~+*#'<>|-_.:,;`´ ";
 
@@ -395,51 +472,6 @@ class term_t {
       this.cell_height = rect.height;
       printf("cell_width=%d cell_height=%d\n",(int)this.cell_width,(int)this.cell_height);
 
-      this.tarea = new Gtk.DrawingArea ();
-      this.tarea.set_has_window (false);
-//~       this.tarea = new Gtk.EventBox ();
-      this.tarea.set_app_paintable(true);
-      this.tarea.set_double_buffered(false);
-//~       this.tarea.set_reallocate_redraws(false);
-      this.tarea.draw.connect(this.term_draw_cb);
-
-      this.win = new Gtk.Window ();
-      this.win.set_app_paintable(true);
-      this.win.set_double_buffered(false);
-      this.win.destroy.connect(Gtk.main_quit);
-      this.win.configure_event.connect(this.term_configure_cb);
-      this.win.set_reallocate_redraws(false);
-      this.win.add(this.tarea);
-
-      this.win.key_press_event.connect((e)=>{
-          uint32 ucs4;
-          uint mods = 0;
-          debug("key_press_event");
-
-          if ( (e.state & Gdk.ModifierType.SHIFT_MASK) == Gdk.ModifierType.SHIFT_MASK)
-            mods |= Tsm.Vte_modifier.SHIFT_MASK;
-          if ( (e.state & Gdk.ModifierType.LOCK_MASK) == Gdk.ModifierType.LOCK_MASK)
-            mods |= Tsm.Vte_modifier.LOCK_MASK;
-          if ( (e.state & Gdk.ModifierType.CONTROL_MASK) == Gdk.ModifierType.CONTROL_MASK)
-            mods |= Tsm.Vte_modifier.CONTROL_MASK;
-          if ( (e.state & Gdk.ModifierType.MOD1_MASK) == Gdk.ModifierType.MOD1_MASK)
-            mods |= Tsm.Vte_modifier.ALT_MASK;
-          if ( (e.state & Gdk.ModifierType.MOD4_MASK) == Gdk.ModifierType.MOD4_MASK)
-            mods |= Tsm.Vte_modifier.LOGO_MASK;
-
-          ucs4 = xkb_keysym_to_utf32(e.keyval);
-          if (ucs4 == 0)
-            ucs4 = Tsm.TSM_VTE_INVALID;
-
-          if (this.vte.handle_keyboard(e.keyval, 0, mods, ucs4)) {
-            this.screen.sb_reset();
-            return true;
-          }
-
-          return false;
-        });
-
-      this.win.show_all();
   }//constructor
 
   void term_recalc_cells()
@@ -472,6 +504,17 @@ static void print_handler(string? domain, LogLevelFlags flags, string message) {
 		GLib.stdout.flush();
 	    }
 
+void run_server(){
+  var term = new Term_dbus_server();
+  new MainLoop ().run ();
+}
+
+void run_client(string[] argv){
+  Gtk.init(ref argv);
+  var term = new Term_dbus_client();
+  Gtk.main();
+}
+
 int main (string[] argv) {
 
 					Log.set_handler(null,
@@ -482,10 +525,15 @@ int main (string[] argv) {
 						LogLevelFlags.LEVEL_INFO |
 						LogLevelFlags.LEVEL_CRITICAL), print_handler);
 
-
-  Gtk.init(ref argv);
-  term_t term = new term_t();
-  Gtk.main();
+foreach(var S in argv){
+  debug("S=%s",S);
+  if(S == "-S"){
+    run_server();
+  }
+  if(S == "-C"){
+    run_client(argv);
+  }
+}
 //~   GLib.stdin.read_line ();
 return 0;
 }
