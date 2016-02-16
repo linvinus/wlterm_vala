@@ -272,8 +272,8 @@ class term_t {
 
             if(len>0){
               //text
-              this.terminal_db_cr.save();
-              if(ch=="")ch=" ";
+//~               this.terminal_db_cr.save();
+//~               if(ch=="")ch=" ";
 
               size_t ulen=0;
               string  cval = Tsm.ucs4_to_utf8_alloc(ch, len, out ulen);
@@ -283,18 +283,14 @@ class term_t {
               var x = posx * this.cell_width;
               var y = posy * this.cell_height - this.cell_bearing;
 
-//~               this.terminal_db_cr.rectangle (posx*this.cell_width, posy*this.cell_height, (posx+1)*this.cell_width, (posy+1)*this.cell_height);
-//~               this.terminal_db_cr.clip ();
-//~               this.terminal_db_cr.new_path ();
-
               this.terminal_db_cr.move_to(x, y);
               this.terminal_db_cr.set_source_rgb(
                        fr / 255.0,
                        fg / 255.0,
                        fb / 255.0);
-                this.terminal_db_cr.show_text(val);//(string)val
+              this.terminal_db_cr.show_text(val);//(string)val
 
-                this.terminal_db_cr.restore();
+//~               this.terminal_db_cr.restore();
               }
         return 0;
         });
@@ -502,7 +498,7 @@ class term_t {
       this.terminal_db_cr.select_font_face ( "Bitstream Vera Sans Mono",
                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
 //~                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
-      this.terminal_db_cr.set_font_size ( (26));
+      this.terminal_db_cr.set_font_size ( (18));
 
       Cairo.TextExtents extents;
       this.terminal_db_cr.text_extents (str, out extents);
@@ -510,7 +506,7 @@ class term_t {
 
       this.cell_width = ((int)extents.width + (str.length - 1)) / str.length;
       this.cell_height = (int)extents.height+0;
-      this.cell_bearing = (int)extents.y_bearing-0;
+      this.cell_bearing = (int)extents.y_bearing-1;
 
 
       this.force_redraw=true;//redraw whole window
