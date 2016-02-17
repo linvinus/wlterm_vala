@@ -17,7 +17,7 @@ class Term_dbus_client {
           printf("shmget");
           exit(1);
       }
-      shmctl(shmid, IPC_RMID, NULL);
+//~       shmctl(shmid, IPC_RMID, NULL);
       /* attach to the segment to get a pointer to it: */
       data = Shm.at(shmid, (void *)0, 0);
       if (data == (char *)(-1)) {
@@ -106,6 +106,7 @@ class Term_dbus_server {
 
 	uint cell_width;
 	uint cell_height;
+	uint cell_bearing;
 	uint width;
 	uint height;
 	uint columns;
@@ -284,41 +285,24 @@ class Term_dbus_server {
 
             if(len>0){
               //text
-              this.terminal_db_cr.save();
-              if(ch=="")ch=" ";
+//~               this.terminal_db_cr.save();
+//~               if(ch=="")ch=" ";
 
               size_t ulen=0;
               string  cval = Tsm.ucs4_to_utf8_alloc(ch, len, out ulen);
               var val=cval.substring(0,(long)ulen);
 
-//~               this.terminal_db_cr.select_font_face ( "Monospace",
-//~                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
-//~                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
-//~               this.terminal_db_cr.set_font_size ( (14 ));
+              var x = posx * this.cell_width;
+              var y = posy * this.cell_height - this.cell_bearing;
 
-
-
-//~               Cairo.TextExtents extents;
-//~               this.terminal_db_cr.text_extents (val, out extents);
-//~               var x =(posx*this.cell_width)+(this.cell_width/2)-(extents.width/2 + extents.x_bearing);
-//~               var y = (posy*this.cell_height)+(this.cell_height/2) - (extents.height/2 + extents.y_bearing);
-//~               this.terminal_db_cr.move_to(x, y);
-//~               this.terminal_db_cr.move_to((posx*this.cell_width), (posy*this.cell_height)+(this.cell_height/2) - (extents.height/2 + extents.y_bearing));
-              this.terminal_db_cr.move_to((posx*this.cell_width), (posy*this.cell_height));
+              this.terminal_db_cr.move_to(x, y);
               this.terminal_db_cr.set_source_rgb(
                        fr / 255.0,
                        fg / 255.0,
                        fb / 255.0);
+              this.terminal_db_cr.show_text(val);//(string)val
 
-//~                 this.terminal_db_cr.show_text(val);//(string)val
-
-                font_layout.set_text(val, (int)ulen);
-//~                 Pango.cairo_update_layout(this.terminal_db_cr,font_layout);
-//~                 font_layout.add_to_cairo_context(this.terminal_db_cr);
-//~                 this.terminal_db_cr.stroke();
-
-                Pango.cairo_show_layout(this.terminal_db_cr, font_layout);
-                this.terminal_db_cr.restore();
+//~               this.terminal_db_cr.restore();
               }
         return 0;
         });
@@ -415,7 +399,6 @@ class Term_dbus_server {
   //constructor
   public Term_dbus_server(){
 
-	string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@!\"$%&/()=?\\}][{°^~+*#'<>|-_.:,;`´ ";
 
 
       if (Tsm.Screen.Screen_new(out  this.screen, this.mylog) <0){
@@ -449,40 +432,51 @@ class Term_dbus_server {
 
       this.start_terminal();
 
-      this.font_desc = new Pango.FontDescription();
-      this.font_desc.set_family("Mono");
-      this.font_desc.set_size((int)(12 * Pango.SCALE));
+//~       this.font_desc = new Pango.FontDescription();
+//~       this.font_desc.set_family("Mono");
+//~       this.font_desc.set_size((int)(12 * Pango.SCALE));
 
-      //virtual surface
-      var surface = new Cairo.ImageSurface(Cairo.Format.RGB24, 2000, 500);
-      var cr = new Cairo.Context(surface);
-      var layout = Pango.cairo_create_layout(cr);
-      layout.set_font_description(this.font_desc);
+//~       //virtual surface
+//~       var surface = new Cairo.ImageSurface(Cairo.Format.RGB24, 2000, 500);
+//~       var cr = new Cairo.Context(surface);
+//~       var layout = Pango.cairo_create_layout(cr);
+//~       layout.set_font_description(this.font_desc);
 
-      layout.set_height(0);
-      layout.set_spacing(0);
+//~       layout.set_height(0);
+//~       layout.set_spacing(0);
 
-      layout.set_text( str, str.length);
+//~       layout.set_text( str, str.length);
 
-      Pango.Rectangle rect;
-      layout.get_pixel_extents( null, out rect);
+//~       Pango.Rectangle rect;
+//~       layout.get_pixel_extents( null, out rect);
 
 
-      this.cell_width = (rect.width + (str.length - 1)) / str.length;
-      this.cell_height = rect.height;
+//~       this.cell_width = (rect.width + (str.length - 1)) / str.length;
+//~       this.cell_height = rect.height;
+
       printf("cell_width=%d cell_height=%d\n",(int)this.cell_width,(int)this.cell_height);
 
   }//constructor
 
   void term_recalc_cells()
   {
-      this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.ARGB32, (int)this.width, (int)this.height);
+      const string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@!\"$%&/()=?\\}][{°^~+*#'<>|-_.:,;`´ ";
+
+      this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.RGB24, (int)this.width, (int)this.height);
       this.terminal_db_cr    = new Cairo.Context (this.terminal_db_image);
 
-      this.font_layout = Pango.cairo_create_layout(terminal_db_cr);
-      this.font_layout.set_font_description(this.font_desc);
-      this.font_layout.set_height(0);
-      this.font_layout.set_spacing(0);
+      this.terminal_db_cr.select_font_face ( "Bitstream Vera Sans Mono",
+                  Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
+//~                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
+      this.terminal_db_cr.set_font_size ( (18));
+
+      Cairo.TextExtents extents;
+      this.terminal_db_cr.text_extents (str, out extents);
+
+
+      this.cell_width = ((int)extents.width + (str.length - 1)) / str.length;
+      this.cell_height = (int)extents.height+0;
+      this.cell_bearing = (int)extents.y_bearing-1;//one pixel offset
 
       this.force_redraw=true;//redraw whole window
 

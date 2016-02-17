@@ -32,5 +32,5 @@ public struct Shm : int {
 
     public static int dt(void *shmaddr);
 
-    public static int shmctl(Shm shmid, int cmd, struct shmid_ds *buf);
+//~     public static int shmctl(Shm shmid, int cmd, struct shmid_ds *buf);
 }
