@@ -490,9 +490,9 @@ class term_t {
 
   void term_recalc_cells()
   {
-      string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@!\"$%&/()=?\\}][{°^~+*#'<>|-_.:,;`´ ";
+      const string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@!\"$%&/()=?\\}][{°^~+*#'<>|-_.:,;`´ ";
 
-      this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.ARGB32, (int)this.width, (int)this.height);
+      this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.RGB24, (int)this.width, (int)this.height);
       this.terminal_db_cr    = new Cairo.Context (this.terminal_db_image);
 
       this.terminal_db_cr.select_font_face ( "Bitstream Vera Sans Mono",
@@ -506,7 +506,7 @@ class term_t {
 
       this.cell_width = ((int)extents.width + (str.length - 1)) / str.length;
       this.cell_height = (int)extents.height+0;
-      this.cell_bearing = (int)extents.y_bearing-1;
+      this.cell_bearing = (int)extents.y_bearing-1;//one pixel offset
 
 
       this.force_redraw=true;//redraw whole window
