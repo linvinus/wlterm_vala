@@ -3,6 +3,8 @@ using Posix;
 //~ [CCode (cname = "execve")]
 //~ extern int execve(string path, string[] arg, string[] environ);
 
+const Gdk.ModifierType ALL_MODS = (Gdk.ModifierType.SHIFT_MASK | Gdk.ModifierType.LOCK_MASK | Gdk.ModifierType.CONTROL_MASK |	  Gdk.ModifierType.MOD1_MASK | Gdk.ModifierType.MOD4_MASK);
+
 
 class terminal_renderer {
   HashTable<string, int> glyphs;
@@ -27,6 +29,7 @@ class term_t {
   Cairo.ImageSurface terminal_db_image;
 	Cairo.Context terminal_db_cr;
 //~   Pango.Layout font_layout;
+  Gdk.Keymap ?keymap=null;
   bool force_redraw=false;//force redraw after resize
 
 	uint cell_width;
@@ -48,7 +51,7 @@ class term_t {
            string format,
            va_list args){
     GLib.stderr.printf("%s: %s: ", sev.to_string(), subs);
-    GLib.stderr.printf(format, args);
+    GLib.stderr.vprintf(format, args);
     GLib.stderr.printf( "\n");
   }
 
@@ -181,8 +184,10 @@ class term_t {
 
 
 //~        terminal_db_cr.move_to(0, 0);
-      double x1,x2,y1,y2;
-      cr2.clip_extents( out x1, out y1, out x2, out y2);
+      double cx1,cx2,cy1,cy2;
+      uint x1,x2,y1,y2, charscount=0;
+      Tsm.Tsmage prev_age2 = this.prev_age;
+      cr2.clip_extents( out cx1, out cy1, out cx2, out cy2);
 //~       var clip_rectangle = Cairo.Region.rectangle();
 
 //~       Gdk.Rectangle grect={(int)x1,(int)y1,(int)(x2-x1),(int)(y2-y1)};
@@ -206,15 +211,13 @@ class term_t {
 //~       cr2.rectangle(x1, y1, x2, y2);
 //~       cr2.fill();
 
+      x1 = (uint)(cx1 / (double)this.cell_width);
+      x2 = (uint)(cx2 / (double)this.cell_width);
+      y1 = (uint)(cy1 / (double)this.cell_height);
+      y2 = (uint)(cy2 / (double)this.cell_height);
+      x1=( x1 > 0 ? x1 -1 : x1);x2+=1;
+      y1=( y1 > 0 ? y1 -1 : y1);y2+=1;
 
-      x1 /= this.cell_width;
-      x2 /= this.cell_width;
-      y1 /= this.cell_height;
-      y2 /= this.cell_height;
-      x1-=1;x2+=1;
-      y1-=1;y2+=1;
-
-//~       print("term_draw_cb l=%f t=%f r=%f b=%f prev_age=%d\n",x1,y1,x2,y2,(int)this.prev_age);
 //~     	Tsm.Tsmage age = this.screen.draw(screen_draw_cb);
     	this.prev_age = this.screen.draw((screen,
 				   id,
@@ -230,13 +233,15 @@ class term_t {
                if( !( ((x1 <= posx)&&(posx<= x2)) && ((y1 <= posy) && (posy <= y2)) )  )
                 return 0;//skip dwaw if not in damaged region
 
-//~                 printf("=%d,%d age=%d prev_age=%d\n",(int)posx,(int)posy,(int)age, (int)prev_age);
+//~                 printf("=%dx%d age=%d prev_age=%d\n",(int)posx,(int)posy,(int)age, (int)prev_age);
 
-               if(this.prev_age>0 &&  age < this.prev_age){
+               if(this.prev_age>0 &&  age <= this.prev_age){
                 return 0;//skip draw if not enough old
                 }
 
             }
+            charscount++;
+//~                 printf("=%dx%d age=%d prev_age=%d\n",(int)posx,(int)posy,(int)age, (int)prev_age);
 
             uint8 fr, fg, fb, br, bg, bb;
             // invert colors if requested
@@ -262,10 +267,14 @@ class term_t {
 //~              cr.move_to(posx*10, posy*20);
 
             //background
+//~             br += 0x80; br = (br + (br >> 8)) >> 8;// br /= 255.0;
+//~             bg += 0x80; bg = (bg + (bg >> 8)) >> 8;
+//~             bb += 0x80; bb = (bb + (bb >> 8)) >> 8;
+
             this.terminal_db_cr.set_source_rgb(
-                     br / 255.0,
-                     bg / 255.0,
-                     bb / 255.0);
+                     br/255.0,
+                     bg/255.0,
+                     bb/255.0);
 
             this.terminal_db_cr.rectangle(posx*this.cell_width, posy*this.cell_height, this.cell_width, this.cell_height);
             this.terminal_db_cr.fill();
@@ -284,10 +293,14 @@ class term_t {
               var y = posy * this.cell_height - this.cell_bearing;
 
               this.terminal_db_cr.move_to(x, y);
+//~               fr += 0x80; fr = (fr + (fr >> 8)) >> 8;
+//~               fg += 0x80; fg = (fg + (fg >> 8)) >> 8;
+//~               fb += 0x80; fb = (fb + (fb >> 8)) >> 8;
+
               this.terminal_db_cr.set_source_rgb(
-                       fr / 255.0,
-                       fg / 255.0,
-                       fb / 255.0);
+                       fr/255.0,
+                       fg/255.0,
+                       fb/255.0);
               this.terminal_db_cr.show_text(val);//(string)val
 
 //~               this.terminal_db_cr.restore();
@@ -295,20 +308,29 @@ class term_t {
         return 0;
         });
 
-    this.prev_age++;//<=
+//~   this.prev_age++;//<=
 
   this.terminal_db_cr.restore();
 
-  this.terminal_db_image.mark_dirty();
-	cr2.set_source_surface(this.terminal_db_image, 0, 0);
-	cr2.paint();
+//~   if(charscount>0)
+//~     this.terminal_db_image.mark_dirty();
+
+//~   cr2.set_source_rgba (0, 0, 0,1);
+//~   cr2.paint();
+  cr2.set_source_surface(this.terminal_db_cr.get_target (), 0, 0);
+//~   cr2.get_source().set_filter (Cairo.Filter.NEAREST);
+  cr2.paint();
+
 
 //~     widget.get_window ().end_paint();//notify for single buffer mode
 
     end = GLib.get_monotonic_time();
-    if (1==1)
-      print("draw: %lldms widg=%d\n", (end - start) / 1000,(int)widget);
-
+    var dtime=(end - start) / 1000;
+    if (dtime>2){
+      print("draw: %lldms widg=%d force=%d \n", dtime,(int)widget,this.force_redraw);
+      print("term_draw_cb l=%d t=%d r=%d b=%d \n",(int)x1,(int)y1,(int)x2,(int)y2);
+    }
+    print("total=%d prev_age=%d prev_age2=%d\n\n",(int)charscount,(int)this.prev_age,(int)prev_age2);
     this.force_redraw=false;
     return true;//stop other handlers from being invoked for the event
   }
@@ -382,6 +404,17 @@ class term_t {
      return false;
   }
 
+  void my_tsmlog(
+			   string file,
+			   int line,
+			   string func,
+			   string subs,
+			   uint sev,
+			   string format,
+			   va_list args){
+        printf("my_tsmlog\n");
+  }
+
   //constructor
   public term_t(){
 
@@ -391,7 +424,6 @@ class term_t {
         printf("Unable to create screen");
         exit(1);
       }
-
       this.screen.set_max_sb(500);
       if( Tsm.Vte.Vte_new(out this.vte,
                   this.screen,
@@ -457,10 +489,51 @@ class term_t {
       this.win.configure_event.connect(this.term_configure_cb);
       this.win.set_reallocate_redraws(false);
       this.win.add(this.tarea);
+      this.win.resize(800,500);
 
       this.win.key_press_event.connect((e)=>{
           uint32 ucs4;
           uint mods = 0;
+         	Gdk.ModifierType cmod;
+          uint key;
+
+          if(this.keymap == null){
+            this.keymap = Gdk.Keymap.get_default();
+          }
+
+          if(this.keymap.translate_keyboard_state(
+              e.hardware_keycode,
+              e.state,
+              e.group,
+              out key,
+              null,
+              null,
+              out cmod)){
+
+            if (key == Gdk.Key.Up &&
+                ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
+              this.screen.sb_up( 1 );
+              this.tarea.queue_draw();
+              return true;
+            } else if (key == Gdk.Key.Down &&
+                ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
+              this.screen.sb_down( 1 );
+              this.tarea.queue_draw();
+              return true;
+            } else if (key == Gdk.Key.Page_Up &&
+                ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
+              printf("sb_page_up\n");
+              this.screen.sb_page_up( 1 );
+              this.tarea.queue_draw();
+              return true;
+            } else if (key == Gdk.Key.Page_Down &&
+                ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
+              this.screen.sb_page_down( 1 );
+              this.tarea.queue_draw();
+              return true;
+            }
+
+          }
 
           if ( (e.state & Gdk.ModifierType.SHIFT_MASK) == Gdk.ModifierType.SHIFT_MASK)
             mods |= Tsm.Vte_modifier.SHIFT_MASK;
@@ -492,10 +565,10 @@ class term_t {
   {
       const string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@!\"$%&/()=?\\}][{°^~+*#'<>|-_.:,;`´ ";
 
-      this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.RGB24, (int)this.width, (int)this.height);
+      this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.ARGB32, (int)this.width, (int)this.height);
       this.terminal_db_cr    = new Cairo.Context (this.terminal_db_image);
 
-      this.terminal_db_cr.select_font_face ( "Bitstream Vera Sans Mono",
+      this.terminal_db_cr.select_font_face ( "Mono",
                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
 //~                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
       this.terminal_db_cr.set_font_size ( (18));
