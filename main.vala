@@ -3,6 +3,16 @@ using Posix;
 //~ [CCode (cname = "execve")]
 //~ extern int execve(string path, string[] arg, string[] environ);
 
+struct Globals{
+  static bool reload = false;
+  public static const string usocket_path = "/run/shm/wlterm_vala_build/unixsocket";
+}
+
+static void signal_handler (int signum) {
+  GLib.FileUtils.unlink(Globals.usocket_path);
+  Posix.exit(0);
+}
+
 
 class Term_dbus_client {
   Gtk.Window win;
@@ -307,7 +317,7 @@ class Term_dbus_server {
         return 0;
         });
 
-    this.prev_age++;//<=
+//~     this.prev_age++;//<=
 
   this.terminal_db_cr.restore();
 
@@ -462,7 +472,7 @@ class Term_dbus_server {
   {
       const string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@!\"$%&/()=?\\}][{°^~+*#'<>|-_.:,;`´ ";
 
-      this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.RGB24, (int)this.width, (int)this.height);
+      this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.ARGB32, (int)this.width, (int)this.height);
       this.terminal_db_cr    = new Cairo.Context (this.terminal_db_image);
 
       this.terminal_db_cr.select_font_face ( "Bitstream Vera Sans Mono",
@@ -499,13 +509,66 @@ static void print_handler(string? domain, LogLevelFlags flags, string message) {
 	    }
 
 void run_server(){
+
+  sigaction_t action = sigaction_t ();
+  action.sa_handler = signal_handler;
+  /* Hook up signal handlers */
+  sigaction (SIGINT, action, null);
+  sigaction (SIGQUIT, action, null);
+  //sigaction (SIGABRT, action, null);//something wrong! don't save file
+  sigaction (SIGTERM, action, null);
+  sigaction (SIGKILL, action, null);
+
+
   var term = new Term_dbus_server();
+
+  GLib.SocketAddress effective_address;
+  try {
+    SocketService service = new SocketService ();
+    GLib.UnixSocketAddress socket = new GLib.UnixSocketAddress(Globals.usocket_path);
+//~     debug("unlink=%d", GLib.FileUtils.unlink(socket.get_path()) );
+    service.add_address(socket,GLib.SocketType.STREAM,GLib.SocketProtocol.DEFAULT,null,out effective_address);
+
+		// Used to shutdown the program:
+		Cancellable cancellable = new Cancellable ();
+		cancellable.cancelled.connect (() => {
+			service.stop ();
+			Gtk.main_quit();
+      debug("unlink2=%d", GLib.FileUtils.unlink(socket.get_path()) );
+
+		});
+
+		service.incoming.connect ((connection, source_object) => {
+//~ 			Source source = source_object as GLib.UnixSocketAddress;//NULL!!!
+
+      debug ("Accepted! \n");
+//~ 			worker_func.begin (connection, source, cancellable);
+			return false;
+		});
+
+		service.start ();
+
+  }catch (Error e){
+    debug("Error: %s\n", e.message);
+  }
+
   new MainLoop ().run ();
 }
 
 void run_client(string[] argv){
   Gtk.init(ref argv);
   var term = new Term_dbus_client();
+
+  try {
+    GLib.UnixSocketAddress socket = new GLib.UnixSocketAddress("/run/shm/wlterm_vala_build/unixsocket");
+    SocketClient client = new SocketClient ();
+    SocketConnection conn = client.connect (socket);
+    string message = @"GET / HTTP/1.1\r\nHost: %s\r\n\r\n";
+    conn.output_stream.write (message.data);
+	} catch (Error e) {
+		debug ("Error: %s\n", e.message);
+	}
+
   Gtk.main();
 }
 
