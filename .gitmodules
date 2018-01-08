@@ -1,0 +1,3 @@
+[submodule "ltk"]
+	path = ltk
+	url = https://github.com/linvinus/LTK.git
