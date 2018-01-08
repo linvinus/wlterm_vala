@@ -1,16 +1,17 @@
 using Posix;
+using Ltk;
 
 //~ [CCode (cname = "execve")]
 //~ extern int execve(string path, string[] arg, string[] environ);
 
-const Gdk.ModifierType ALL_MODS = (Gdk.ModifierType.SHIFT_MASK | Gdk.ModifierType.LOCK_MASK | Gdk.ModifierType.CONTROL_MASK |	  Gdk.ModifierType.MOD1_MASK | Gdk.ModifierType.MOD4_MASK);
+//~ const Gdk.ModifierType ALL_MODS = (Gdk.ModifierType.SHIFT_MASK | Gdk.ModifierType.LOCK_MASK | Gdk.ModifierType.CONTROL_MASK |	  Gdk.ModifierType.MOD1_MASK | Gdk.ModifierType.MOD4_MASK);
 
 
 class terminal_renderer {
   HashTable<string, int> glyphs;
 }
 
-class term_t {
+class TSMterm : Ltk.Widget {
   Tsm.Screen screen;
   Tsm.Vte vte;
   Shlpty.Bridge pty_bridge;
@@ -21,22 +22,23 @@ class term_t {
   uint child_src;
   uint pty_idle_src=0;
   Tsm.Tsmage prev_age=0;
+  private bool _focused = false;
 
-  Pango.FontDescription font_desc;
-  Gtk.Window win;
-  Gtk.DrawingArea tarea;
+//~   Pango.FontDescription font_desc;
+  
+//~   Gtk.DrawingArea tarea;
 //~   Gtk.EventBox tarea;
-  Cairo.ImageSurface terminal_db_image;
-	Cairo.Context terminal_db_cr;
+//~   Cairo.ImageSurface terminal_db_image;
+//~   Cairo.Context terminal_db_cr;
 //~   Pango.Layout font_layout;
-  Gdk.Keymap ?keymap=null;
+//~   Gdk.Keymap ?keymap=null;
   bool force_redraw=false;//force redraw after resize
 
 	uint cell_width;
 	uint cell_height;
 	uint cell_bearing;
-	uint width;
-	uint height;
+//~ 	uint width;
+//~ 	uint height;
 	uint columns;
 	uint rows;
   bool initialized=false;
@@ -55,23 +57,21 @@ class term_t {
     GLib.stderr.printf( "\n");
   }
 
-  public void my_write_cb(Tsm.Vte vte,
-				  char* u8,
-				  size_t len){
-  int r;
+  public void my_write_cb(Tsm.Vte vte, char* u8,  size_t len){
+    int r;
 
-	r = this.pty.write(u8, len);
-	if (r < 0)
-		printf("OOM in pty-write (%d)", r);
+    r = this.pty.write(u8, len);
+    if (r < 0)
+      printf("OOM in pty-write (%d)", r);
 
-	if ( this.pty_idle_src == 0 )
-		this.pty_idle_src = GLib.Idle.add(()=>{
-        this.pty.dispatch();
-        this.pty_idle_src=0;
-        return false;//stop
-      });
+    if ( this.pty_idle_src == 0 )
+      this.pty_idle_src = GLib.Idle.add(()=>{
+          this.pty.dispatch();
+          this.pty_idle_src=0;
+          return false;//stop
+        });
 
-  }
+  }//my_write_cb
 
   bool term_bridge_cb (IOChannel source, IOCondition condition) {
     int r;
@@ -85,7 +85,7 @@ class term_t {
   public void term_read_cb(Shlpty.Shlpty shelpty, char *u8,size_t len){
 //~     printf("new char:%s\n",(string)u8);
     this.vte.input(u8, len);
-    this.tarea.queue_draw();
+    this.damaged = true;//redraw with new state
   }
 
   void term_notify_resize()
@@ -170,7 +170,26 @@ class term_t {
         return 0;
     }//screen_draw_cb
 
-  bool term_draw_cb (Gtk.Widget    widget,Cairo.Context cr2){
+    //set input focus
+    public override bool set_focus(bool focus){
+      this._focused = focus;
+      if(!focus && (this.state & WidgetState.focused) >0 ){
+        this.state  &= ~WidgetState.focused;
+        this.damaged = true;
+      }else if(focus && (this.state & WidgetState.focused) == 0 ){
+        this.state  |= WidgetState.focused;
+        this.damaged = true;
+      }
+      return this._focused;
+    }//set_focus
+
+    //is widget focused?
+    public override bool get_focus(){
+      return this._focused;
+    }//get_focus
+
+//~   bool term_draw_cb (Gtk.Widget    widget,Cairo.Context cr2){
+    public override bool draw(Cairo.Context cr2){
       int64 start, end;
       if(!this.initialized) return false;
       start=GLib.get_monotonic_time();
@@ -179,7 +198,8 @@ class term_t {
 
 //~       this. begin_paint_region
 //~       this.terminal_db_image.flush();
-      this.terminal_db_cr.save();
+      cr2.save();
+      cr2.set_font_size ( (18));
 
 
 
@@ -195,9 +215,9 @@ class term_t {
 
 //~       terminal_db_cr.rectangle(x1, y1, x2, y2);
 //~       terminal_db_cr.fill();
-//~       this.terminal_db_cr.restore();
+//~       cr2.restore();
 //~       terminal_db_cr.move_to(x1, y1);
-//~       this.terminal_db_cr.save();
+//~       cr2.save();
       //background
 //~       cr2.move_to(GLib.Random.int_range(0,50),GLib.Random.int_range(0,50));
 //~       cr2.set_source_rgb(1.0,0,0);
@@ -271,17 +291,17 @@ class term_t {
 //~             bg += 0x80; bg = (bg + (bg >> 8)) >> 8;
 //~             bb += 0x80; bb = (bb + (bb >> 8)) >> 8;
 
-            this.terminal_db_cr.set_source_rgb(
+            cr2.set_source_rgb(
                      br/255.0,
                      bg/255.0,
                      bb/255.0);
 
-            this.terminal_db_cr.rectangle(posx*this.cell_width, posy*this.cell_height, this.cell_width, this.cell_height);
-            this.terminal_db_cr.fill();
+            cr2.rectangle(posx*this.cell_width, posy*this.cell_height, this.cell_width, this.cell_height);
+            cr2.fill();
 
             if(len>0){
               //text
-//~               this.terminal_db_cr.save();
+//~               cr2.save();
 //~               if(ch=="")ch=" ";
 
               size_t ulen=0;
@@ -292,34 +312,34 @@ class term_t {
               var x = posx * this.cell_width;
               var y = posy * this.cell_height - this.cell_bearing;
 
-              this.terminal_db_cr.move_to(x, y);
+              cr2.move_to(x, y);
 //~               fr += 0x80; fr = (fr + (fr >> 8)) >> 8;
 //~               fg += 0x80; fg = (fg + (fg >> 8)) >> 8;
 //~               fb += 0x80; fb = (fb + (fb >> 8)) >> 8;
 
-              this.terminal_db_cr.set_source_rgb(
+              cr2.set_source_rgb(
                        fr/255.0,
                        fg/255.0,
                        fb/255.0);
-              this.terminal_db_cr.show_text(val);//(string)val
+              cr2.show_text(val);//(string)val
 
-//~               this.terminal_db_cr.restore();
+//~               cr2.restore();
               }
         return 0;
         });
 
 //~   this.prev_age++;//<=
 
-  this.terminal_db_cr.restore();
+  cr2.restore();
 
 //~   if(charscount>0)
 //~     this.terminal_db_image.mark_dirty();
 
 //~   cr2.set_source_rgba (0, 0, 0,1);
 //~   cr2.paint();
-  cr2.set_source_surface(this.terminal_db_cr.get_target (), 0, 0);
+//~   cr2.set_source_surface(cr2.get_target (), 0, 0);
 //~   cr2.get_source().set_filter (Cairo.Filter.NEAREST);
-  cr2.paint();
+//~   cr2.paint();
 
 
 //~     widget.get_window ().end_paint();//notify for single buffer mode
@@ -327,7 +347,7 @@ class term_t {
     end = GLib.get_monotonic_time();
     var dtime=(end - start) / 1000;
     if (dtime>2){
-      print("draw: %lldms widg=%d force=%d \n", dtime,(int)widget,this.force_redraw);
+      print("draw: %lldms widg=%p force=%d \n", dtime,this,this.force_redraw);
       print("term_draw_cb l=%d t=%d r=%d b=%d \n",(int)x1,(int)y1,(int)x2,(int)y2);
     }
     print("total=%d prev_age=%d prev_age2=%d\n\n",(int)charscount,(int)this.prev_age,(int)prev_age2);
@@ -355,7 +375,7 @@ class term_t {
   {
     GLib.Process.close_pid(pid);
     this.child_src = 0;
-    Gtk.main_quit();
+    Ltk.Global.quit();
   }//term_child_exit_cb
 
   bool start_terminal(){
@@ -369,7 +389,7 @@ class term_t {
         if (r < 0) {
           printf("cannot spawn pty (%d)\n", r);
           GLib.stdout.flush();
-          Gtk.main_quit();
+          Ltk.Global.quit();
           return true;
         } else if (r==0) {
           /* child */
@@ -381,7 +401,7 @@ class term_t {
         if (r < 0) {
           printf("cannot add pty to bridge (%d)\n", r);
           this.pty.close();
-          Gtk.main_quit();
+          Ltk.Global.quit();
           return true;
         }
 
@@ -394,14 +414,11 @@ class term_t {
         return true;
   }//start_terminal
 
-  bool term_configure_cb (Gdk.EventConfigure event){
-    this.width = event.width;
-    this.height = event.height;
+  public override void allocation_changed(){
     if(!this.initialized){
       }
     this.term_recalc_cells();
     this.term_notify_resize();
-     return false;
   }
 
   void my_tsmlog(
@@ -416,7 +433,10 @@ class term_t {
   }
 
   //constructor
-  public term_t(){
+  public TSMterm(){
+    
+      this.min_width = 50;
+      this.min_height = 50;
 
 
 
@@ -474,107 +494,92 @@ class term_t {
 
       printf("cell_width=%d cell_height=%d\n",(int)this.cell_width,(int)this.cell_height);
 
-      this.tarea = new Gtk.DrawingArea ();
-      this.tarea.set_has_window (false);
-//~       this.tarea = new Gtk.EventBox ();
-      this.tarea.set_app_paintable(true);
-      this.tarea.set_double_buffered(false);
-//~       this.tarea.set_reallocate_redraws(false);
-      this.tarea.draw.connect(this.term_draw_cb);
-
-      this.win = new Gtk.Window ();
-      this.win.set_app_paintable(true);
-      this.win.set_double_buffered(false);
-      this.win.destroy.connect(Gtk.main_quit);
-      this.win.configure_event.connect(this.term_configure_cb);
-      this.win.set_reallocate_redraws(false);
-      this.win.add(this.tarea);
-      this.win.resize(800,500);
-
-      this.win.key_press_event.connect((e)=>{
-          uint32 ucs4;
-          uint mods = 0;
-         	Gdk.ModifierType cmod;
-          uint key;
-
-          if(this.keymap == null){
-            this.keymap = Gdk.Keymap.get_default();
-          }
-
-          if(this.keymap.translate_keyboard_state(
-              e.hardware_keycode,
-              e.state,
-              e.group,
-              out key,
-              null,
-              null,
-              out cmod)){
-
-            if (key == Gdk.Key.Up &&
-                ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
-              this.screen.sb_up( 1 );
-              this.tarea.queue_draw();
-              return true;
-            } else if (key == Gdk.Key.Down &&
-                ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
-              this.screen.sb_down( 1 );
-              this.tarea.queue_draw();
-              return true;
-            } else if (key == Gdk.Key.Page_Up &&
-                ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
-              printf("sb_page_up\n");
-              this.screen.sb_page_up( 1 );
-              this.tarea.queue_draw();
-              return true;
-            } else if (key == Gdk.Key.Page_Down &&
-                ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
-              this.screen.sb_page_down( 1 );
-              this.tarea.queue_draw();
-              return true;
-            }
-
-          }
-
-          if ( (e.state & Gdk.ModifierType.SHIFT_MASK) == Gdk.ModifierType.SHIFT_MASK)
-            mods |= Tsm.Vte_modifier.SHIFT_MASK;
-          if ( (e.state & Gdk.ModifierType.LOCK_MASK) == Gdk.ModifierType.LOCK_MASK)
-            mods |= Tsm.Vte_modifier.LOCK_MASK;
-          if ( (e.state & Gdk.ModifierType.CONTROL_MASK) == Gdk.ModifierType.CONTROL_MASK)
-            mods |= Tsm.Vte_modifier.CONTROL_MASK;
-          if ( (e.state & Gdk.ModifierType.MOD1_MASK) == Gdk.ModifierType.MOD1_MASK)
-            mods |= Tsm.Vte_modifier.ALT_MASK;
-          if ( (e.state & Gdk.ModifierType.MOD4_MASK) == Gdk.ModifierType.MOD4_MASK)
-            mods |= Tsm.Vte_modifier.LOGO_MASK;
-
-          ucs4 = xkb_keysym_to_utf32(e.keyval);
-          if (ucs4 == 0)
-            ucs4 = Tsm.TSM_VTE_INVALID;
-
-          if (this.vte.handle_keyboard(e.keyval, 0, mods, ucs4)) {
-            this.screen.sb_reset();
-            return true;
-          }
-
-          return false;
-        });
-
-      this.win.show_all();
   }//constructor
+
+
+  public override void on_key_press(uint keycode, uint state){
+      uint32 ucs4;
+      uint mods = 0;
+//~       Gdk.ModifierType cmod;
+      uint key;
+
+//~       if(this.keymap == null){
+//~         this.keymap = Gdk.Keymap.get_default();
+//~       }
+
+/*      if(this.keymap.translate_keyboard_state(
+          e.hardware_keycode,
+          e.state,
+          e.group,
+          out key,
+          null,
+          null,
+          out cmod)){
+
+        if (key == Gdk.Key.Up &&
+            ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
+          this.screen.sb_up( 1 );
+          this.tarea.queue_draw();
+          return true;
+        } else if (key == Gdk.Key.Down &&
+            ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
+          this.screen.sb_down( 1 );
+          this.tarea.queue_draw();
+          return true;
+        } else if (key == Gdk.Key.Page_Up &&
+            ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
+          printf("sb_page_up\n");
+          this.screen.sb_page_up( 1 );
+          this.tarea.queue_draw();
+          return true;
+        } else if (key == Gdk.Key.Page_Down &&
+            ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
+          this.screen.sb_page_down( 1 );
+          this.tarea.queue_draw();
+          return true;
+        }
+
+      }*/
+
+/*      if ( (state & Gdk.ModifierType.SHIFT_MASK) == Gdk.ModifierType.SHIFT_MASK)
+        mods |= Tsm.Vte_modifier.SHIFT_MASK;
+      if ( (state & Gdk.ModifierType.LOCK_MASK) == Gdk.ModifierType.LOCK_MASK)
+        mods |= Tsm.Vte_modifier.LOCK_MASK;
+      if ( (state & Gdk.ModifierType.CONTROL_MASK) == Gdk.ModifierType.CONTROL_MASK)
+        mods |= Tsm.Vte_modifier.CONTROL_MASK;
+      if ( (state & Gdk.ModifierType.MOD1_MASK) == Gdk.ModifierType.MOD1_MASK)
+        mods |= Tsm.Vte_modifier.ALT_MASK;
+      if ( (state & Gdk.ModifierType.MOD4_MASK) == Gdk.ModifierType.MOD4_MASK)
+        mods |= Tsm.Vte_modifier.LOGO_MASK;
+*/
+      ucs4 = xkb_keysym_to_utf32(keycode);
+      debug("TSMterm: on_key_press ucs4=%u keycode=%u mods=%u state=%u ",ucs4,keycode,mods,state);
+      if (ucs4 == 0)
+        ucs4 = Tsm.TSM_VTE_INVALID;
+
+      if (this.vte.handle_keyboard(keycode, 0, mods, ucs4)) {
+        this.screen.sb_reset();
+        return;
+      }
+
+      return;
+    }//on_key_press
 
   void term_recalc_cells()
   {
       const string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@!\"$%&/()=?\\}][{°^~+*#'<>|-_.:,;`´ ";
 
-      this.terminal_db_image = new Cairo.ImageSurface (Cairo.Format.ARGB32, (int)this.width, (int)this.height);
-      this.terminal_db_cr    = new Cairo.Context (this.terminal_db_image);
+      var terminal_db_image = new Cairo.ImageSurface (Cairo.Format.ARGB32, int.max((int)this.A.width,(int)this.min_width), int.max((int)this.A.height,(int)this.min_height));
+      var cr    = new Cairo.Context (terminal_db_image);
 
-      this.terminal_db_cr.select_font_face ( "Mono",
-                  Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
+//~       this.terminal_db_cr.select_font_face ( "Mono",
+//~                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
 //~                   Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD);
-      this.terminal_db_cr.set_font_size ( (18));
+      cr.set_font_face(Ltk.Global.Font);
+      cr.set_font_size ( (18));
 
       Cairo.TextExtents extents;
-      this.terminal_db_cr.text_extents (str, out extents);
+      cr.text_extents (str, out extents);
 
 
       this.cell_width = ((int)extents.width + (str.length - 1)) / str.length;
@@ -585,8 +590,8 @@ class term_t {
       this.force_redraw=true;//redraw whole window
 
 
-    this.columns = this.width / this.cell_width;
-    this.rows = this.height / this.cell_height;
+    this.columns = this.A.width / this.cell_width;
+    this.rows = this.A.height / this.cell_height;
 
     if (this.columns == 0)
       this.columns = 1;
@@ -598,9 +603,24 @@ class term_t {
 }
 
 int main (string[] argv) {
-  Gtk.init(ref argv);
-  term_t term = new term_t();
-  Gtk.main();
+
+  Ltk.Global.Init(true,"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf");
+
+  var window = new Ltk.Window();
+  window.place_policy = Ltk.SOptions.place_horizontal;
+  window.fill_mask = Ltk.SOptions.fill_vertical | Ltk.SOptions.fill_horizontal;
+  window.set_title("TSMterm");
+
+  var term = new TSMterm();
+  term.fill_mask = Ltk.SOptions.fill_vertical | Ltk.SOptions.fill_horizontal;
+  term.show();
+  
+  window.add(term);
+
+  window.show();
+  window.size_request(800,600);
+
+  Ltk.Global.run();
 //~   GLib.stdin.read_line ();
 return 0;
 }

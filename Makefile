@@ -29,20 +29,16 @@ $(shell `[ \(  -L ./tmpfs \)  -a \( -e ./tmpfs \) ] || mkdir -p /run/shm/$(PRG_N
 VALA_FLAGS += -d ./tmpfs
 endif
 
+include ./ltk/Makefile
+
 VALA_FLAGS += -v
 VALA_FLAGS += --disable-warnings
 VALA_FLAGS += --save-temps -X -O0 -X -g
 VALA_FLAGS += -X -DGETTEXT_PACKAGE=\"$(PRG_NAME)\" -X -DAY_GIT_HASH=\"$(GIT_HASH)\" -X -DAY_CHANGELOG_TAG=\"$(CHANGELOG_TAG)\"
-#\ -I.\ -include\ "./config.h" -v
-ifeq ($(LINUX.DISTRIB.ID),ubuntu)
-#debian specific possibility
-VALA_FLAGS += -D ALTERNATE_SCREEN_SCROLL
-endif
 
-VTE ?= $(shell pkg-config  --exists vte-2.91 && echo 2.91)
-VTE ?= $(shell pkg-config  --exists vte-2.90 && echo 2.90)
 
-VALA_FLAGS += --vapidir ./vapi --pkg libtsm -X -Iexternal/ --pkg shl_pty --pkg posix  --pkg gtk+-3.0 --pkg gdk-x11-3.0 --pkg cairo -X -lxkbcommon
+VALA_FLAGS += $(LTK_FLAGS) --vapidir ./vapi --pkg libtsm -X -Iexternal/ --pkg shl_pty -X -lxkbcommon
+#--pkg posix  --pkg gtk+-3.0 --pkg gdk-x11-3.0 --pkg cairo -X -lxkbcommon
 #--pkg gtk+-3.0 --pkg gdk-x11-3.0 --pkg cairo --pkg posix --pkg gmodule-2.0
 
 
@@ -57,12 +53,12 @@ VALA_FLAGS += --vapidir ./vapi --pkg libtsm -X -Iexternal/ --pkg shl_pty --pkg p
 #DESTDIR?=
 PREFIX?=/usr
 
-VALA_FILES  =  external/shl_pty.c  main.vala
+VALA_FILES  =  external/shl_pty.c  main.vala $(LTK_FILES)
 
 #VALA_FLAGS += --pkg gnome-keyring-1 -D HAVE_QLIST
 #VALA_FILES += 	altyo_quick_connectios.vala
 
-GLADE_FILES = data/preferences.glade data/encodings_list.glade data/main_window_encodings_combo.glade
+#~ GLADE_FILES = data/preferences.glade data/encodings_list.glade data/main_window_encodings_combo.glade
 
 
 default:
