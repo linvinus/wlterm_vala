@@ -564,7 +564,23 @@ class TSMterm : Ltk.Widget {
 
     this.initialized=true;
   }
-}
+    public override void on_button_press(uint button,uint x, uint y){
+      if(button == 1){
+        this.screen.selection_start((x/this.cell_width),(y/this.cell_height));
+        this.damaged = true;//redraw button with new state
+      }
+    }
+    public override void on_button_release(uint button,uint x, uint y){
+      if(button == 1){
+        this.screen.selection_target((x/this.cell_width),(y/this.cell_height));
+        this.damaged = true;//redraw button with new state
+      }else{
+        string selection;
+        this.screen.selection_copy(out selection);
+        debug("selection=%s",selection);
+      }
+    }
+}//class TSMterm
 
 int main (string[] argv) {
 
