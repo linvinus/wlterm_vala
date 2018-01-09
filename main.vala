@@ -564,20 +564,24 @@ class TSMterm : Ltk.Widget {
 
     this.initialized=true;
   }
-    public override void on_button_press(uint button,uint x, uint y){
-      if(button == 1){
+  private bool _selection = false;
+    public override void on_button_press(uint button, uint state,uint x, uint y){
+		debug("on_button_press %u %u",button,state);
+      if(button == 1 && (state & Xcb.ModMask.SHIFT)>0){
         this.screen.selection_start((x/this.cell_width),(y/this.cell_height));
         this.damaged = true;//redraw button with new state
+        _selection=true;
       }
     }
-    public override void on_button_release(uint button,uint x, uint y){
-      if(button == 1){
+    public override void on_button_release(uint button, uint state,uint x, uint y){
+      if(button == 1 && _selection){
         this.screen.selection_target((x/this.cell_width),(y/this.cell_height));
         this.damaged = true;//redraw button with new state
+        _selection=false;
       }else{
-        string selection;
-        this.screen.selection_copy(out selection);
-        debug("selection=%s",selection);
+        string seltxt;
+        this.screen.selection_copy(out seltxt);
+        debug("selection=%s",seltxt);
       }
     }
 }//class TSMterm
