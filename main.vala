@@ -417,7 +417,6 @@ class TSMterm : Ltk.Widget {
 
   //constructor
   public TSMterm(){
-    
       this.min_width = 50;
       this.min_height = 50;
 
@@ -479,29 +478,9 @@ class TSMterm : Ltk.Widget {
 
   }//constructor
 
-    /* print names of modifiers present in mask */
-    private void
-    print_modifiers (uint32 mask)
-    {
-        string MODIFIERS[] = {
-                "Shift", "Lock", "Ctrl", "Alt",
-                "Mod2", "Mod3", "Mod4", "Mod5",
-                "Button1", "Button2", "Button3", "Button4", "Button5"
-        };
-
-        printf ("Modifier mask: ");
-        for (int i=0 ; mask>0; mask >>= 1, ++i) {
-            if ( (mask & 1) == 1) {
-                printf (MODIFIERS[i]);
-            }
-        }
-        printf ("\n");
-    }
-
   public override void on_key_press(uint keycode, uint state){
       uint32 ucs4;
       uint mods = 0;
-
       if (keycode == Xkb.Key.Up &&
           ((state & Xkb.ModifierType.SHIFT_MASK)>0)) {
         this.screen.sb_up( 1 );
@@ -537,7 +516,6 @@ class TSMterm : Ltk.Widget {
       if ( (state & Xkb.ModifierType.MOD4_MASK) == Xkb.ModifierType.MOD4_MASK)
         mods |= Tsm.Vte_modifier.LOGO_MASK;
 
-      print_modifiers(state);
       ucs4 = xkb_keysym_to_utf32(keycode);
       debug("TSMterm: on_key_press ucs4=%u keycode=%u mods=%u state=%u ",ucs4,keycode,mods,state);
       if (ucs4 == 0)
@@ -555,7 +533,7 @@ class TSMterm : Ltk.Widget {
   {
       const string str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@!\"$%&/()=?\\}][{°^~+*#'<>|-_.:,;`´ ";
 
-      var terminal_db_image = new Cairo.ImageSurface (Cairo.Format.ARGB32, int.max((int)this.A.width,(int)this.min_width), int.max((int)this.A.height,(int)this.min_height));
+      var terminal_db_image = new Cairo.ImageSurface (Cairo.Format.A8, 1,1);
       var cr    = new Cairo.Context (terminal_db_image);
 
 //~       this.terminal_db_cr.select_font_face ( "Mono",
