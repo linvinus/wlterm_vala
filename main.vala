@@ -517,7 +517,7 @@ class TSMterm : Ltk.Widget {
         mods |= Tsm.Vte_modifier.LOGO_MASK;
 
       ucs4 = xkb_keysym_to_utf32(keycode);
-      debug("TSMterm: on_key_press ucs4=%u keycode=%u mods=%u state=%u ",ucs4,keycode,mods,state);
+      ltkdebug("TSMterm: on_key_press ucs4=%u keycode=%u mods=%u state=%u ",ucs4,keycode,mods,state);
       if (ucs4 == 0)
         ucs4 = Tsm.TSM_VTE_INVALID;
 
@@ -566,7 +566,7 @@ class TSMterm : Ltk.Widget {
   }
   private bool _selection = false;
     public override void on_button_press(uint button, uint state,uint x, uint y){
-		debug("on_button_press %u %u",button,state);
+		ltkdebug("on_button_press %u %u",button,state);
       if(button == 1 && (state & Xcb.ModMask.SHIFT)>0){
         this.screen.selection_start((x/this.cell_width),(y/this.cell_height));
         this.damaged = true;//redraw button with new state
@@ -581,7 +581,7 @@ class TSMterm : Ltk.Widget {
       }else{
         string seltxt;
         this.screen.selection_copy(out seltxt);
-        debug("selection=%s",seltxt);
+        ltkdebug("selection=%s",seltxt);
       }
     }
 }//class TSMterm
