@@ -22,7 +22,6 @@ class TSMterm : Ltk.Widget {
   uint child_src;
   uint pty_idle_src=0;
   Tsm.Tsmage prev_age=0;
-  private bool _focused = false;
 
 //~   Pango.FontDescription font_desc;
   
@@ -169,24 +168,6 @@ class TSMterm : Ltk.Widget {
 
         return 0;
     }//screen_draw_cb
-
-    //set input focus
-    public override bool set_focus(bool focus){
-      this._focused = focus;
-      if(!focus && (this.state & WidgetState.focused) >0 ){
-        this.state  &= ~WidgetState.focused;
-        this.damaged = true;
-      }else if(focus && (this.state & WidgetState.focused) == 0 ){
-        this.state  |= WidgetState.focused;
-        this.damaged = true;
-      }
-      return this._focused;
-    }//set_focus
-
-    //is widget focused?
-    public override bool get_focus(){
-      return this._focused;
-    }//get_focus
 
 //~   bool term_draw_cb (Gtk.Widget    widget,Cairo.Context cr2){
     public override bool draw(Cairo.Context cr2){
@@ -520,46 +501,30 @@ class TSMterm : Ltk.Widget {
   public override void on_key_press(uint keycode, uint state){
       uint32 ucs4;
       uint mods = 0;
-//~       Gdk.ModifierType cmod;
-      uint key;
 
-//~       if(this.keymap == null){
-//~         this.keymap = Gdk.Keymap.get_default();
-//~       }
+      if (keycode == Xkb.Key.Up &&
+          ((state & Xkb.ModifierType.SHIFT_MASK)>0)) {
+        this.screen.sb_up( 1 );
+        this.damaged = true;//redraw with new state
+        return;
+      } else if (keycode == Xkb.Key.Down &&
+          ((state & Xkb.ModifierType.SHIFT_MASK)>0)) {
+        this.screen.sb_down( 1 );
+        this.damaged = true;//redraw with new state
+        return;
+      } else if (keycode == Xkb.Key.Page_Up &&
+          ((state & Xkb.ModifierType.SHIFT_MASK)>0)) {
+        printf("sb_page_up\n");
+        this.screen.sb_page_up( 1 );
+        this.damaged = true;//redraw with new state
+        return;
+      } else if (keycode == Xkb.Key.Page_Down &&
+          ((state & Xkb.ModifierType.SHIFT_MASK)>0)) {
+        this.screen.sb_page_down( 1 );
+        this.damaged = true;//redraw with new state
+        return;
+      }
 
-/*      if(this.keymap.translate_keyboard_state(
-          e.hardware_keycode,
-          e.state,
-          e.group,
-          out key,
-          null,
-          null,
-          out cmod)){
-
-        if (key == Gdk.Key.Up &&
-            ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
-          this.screen.sb_up( 1 );
-          this.tarea.queue_draw();
-          return true;
-        } else if (key == Gdk.Key.Down &&
-            ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
-          this.screen.sb_down( 1 );
-          this.tarea.queue_draw();
-          return true;
-        } else if (key == Gdk.Key.Page_Up &&
-            ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
-          printf("sb_page_up\n");
-          this.screen.sb_page_up( 1 );
-          this.tarea.queue_draw();
-          return true;
-        } else if (key == Gdk.Key.Page_Down &&
-            ((e.state & ~cmod & ALL_MODS) == Gdk.ModifierType.SHIFT_MASK)) {
-          this.screen.sb_page_down( 1 );
-          this.tarea.queue_draw();
-          return true;
-        }
-
-      }*/
 
       if ( (state & Xkb.ModifierType.SHIFT_MASK) == Xkb.ModifierType.SHIFT_MASK)
         mods |= Tsm.Vte_modifier.SHIFT_MASK;
@@ -642,6 +607,7 @@ int main (string[] argv) {
 
   window.show();
   window.size_request(800,600);
+  term.set_focus(true);
 
   Ltk.Global.run();
 //~   GLib.stdin.read_line ();
