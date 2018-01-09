@@ -190,6 +190,8 @@ class TSMterm : Ltk.Widget {
 
 //~   bool term_draw_cb (Gtk.Widget    widget,Cairo.Context cr2){
     public override bool draw(Cairo.Context cr2){
+      var _ret = base.draw(cr2);
+      
       int64 start, end;
       if(!this.initialized) return false;
       start=GLib.get_monotonic_time();
@@ -352,7 +354,7 @@ class TSMterm : Ltk.Widget {
     }
     print("total=%d prev_age=%d prev_age2=%d\n\n",(int)charscount,(int)this.prev_age,(int)prev_age2);
     this.force_redraw=false;
-    return true;//stop other handlers from being invoked for the event
+    return _ret;//stop other handlers from being invoked for the event
   }
 
   void  term_run_child()
@@ -496,6 +498,24 @@ class TSMterm : Ltk.Widget {
 
   }//constructor
 
+    /* print names of modifiers present in mask */
+    private void
+    print_modifiers (uint32 mask)
+    {
+        string MODIFIERS[] = {
+                "Shift", "Lock", "Ctrl", "Alt",
+                "Mod2", "Mod3", "Mod4", "Mod5",
+                "Button1", "Button2", "Button3", "Button4", "Button5"
+        };
+
+        printf ("Modifier mask: ");
+        for (int i=0 ; mask>0; mask >>= 1, ++i) {
+            if ( (mask & 1) == 1) {
+                printf (MODIFIERS[i]);
+            }
+        }
+        printf ("\n");
+    }
 
   public override void on_key_press(uint keycode, uint state){
       uint32 ucs4;
@@ -541,17 +561,18 @@ class TSMterm : Ltk.Widget {
 
       }*/
 
-/*      if ( (state & Gdk.ModifierType.SHIFT_MASK) == Gdk.ModifierType.SHIFT_MASK)
+      if ( (state & Xkb.ModifierType.SHIFT_MASK) == Xkb.ModifierType.SHIFT_MASK)
         mods |= Tsm.Vte_modifier.SHIFT_MASK;
-      if ( (state & Gdk.ModifierType.LOCK_MASK) == Gdk.ModifierType.LOCK_MASK)
+      if ( (state & Xkb.ModifierType.LOCK_MASK) == Xkb.ModifierType.LOCK_MASK)
         mods |= Tsm.Vte_modifier.LOCK_MASK;
-      if ( (state & Gdk.ModifierType.CONTROL_MASK) == Gdk.ModifierType.CONTROL_MASK)
+      if ( (state & Xkb.ModifierType.CONTROL_MASK) == Xkb.ModifierType.CONTROL_MASK)
         mods |= Tsm.Vte_modifier.CONTROL_MASK;
-      if ( (state & Gdk.ModifierType.MOD1_MASK) == Gdk.ModifierType.MOD1_MASK)
+      if ( (state & Xkb.ModifierType.MOD1_MASK) == Xkb.ModifierType.MOD1_MASK)
         mods |= Tsm.Vte_modifier.ALT_MASK;
-      if ( (state & Gdk.ModifierType.MOD4_MASK) == Gdk.ModifierType.MOD4_MASK)
+      if ( (state & Xkb.ModifierType.MOD4_MASK) == Xkb.ModifierType.MOD4_MASK)
         mods |= Tsm.Vte_modifier.LOGO_MASK;
-*/
+
+      print_modifiers(state);
       ucs4 = xkb_keysym_to_utf32(keycode);
       debug("TSMterm: on_key_press ucs4=%u keycode=%u mods=%u state=%u ",ucs4,keycode,mods,state);
       if (ucs4 == 0)
@@ -607,11 +628,13 @@ int main (string[] argv) {
   Ltk.Global.Init(true,"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf");
 
   var window = new Ltk.Window();
+  window.have_background=false;
   window.place_policy = Ltk.SOptions.place_horizontal;
   window.fill_mask = Ltk.SOptions.fill_vertical | Ltk.SOptions.fill_horizontal;
   window.set_title("TSMterm");
 
   var term = new TSMterm();
+  term.have_background=false;
   term.fill_mask = Ltk.SOptions.fill_vertical | Ltk.SOptions.fill_horizontal;
   term.show();
   

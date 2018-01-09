@@ -37,7 +37,7 @@ VALA_FLAGS += --save-temps -X -O0 -X -g
 VALA_FLAGS += -X -DGETTEXT_PACKAGE=\"$(PRG_NAME)\" -X -DAY_GIT_HASH=\"$(GIT_HASH)\" -X -DAY_CHANGELOG_TAG=\"$(CHANGELOG_TAG)\"
 
 
-VALA_FLAGS += $(LTK_FLAGS) --vapidir ./vapi --pkg libtsm -X -Iexternal/ --pkg shl_pty -X -lxkbcommon
+VALA_FLAGS += $(LTK_FLAGS) --vapidir ./vapi --pkg libtsm -X -Iexternal/ --pkg shl_pty 
 #--pkg posix  --pkg gtk+-3.0 --pkg gdk-x11-3.0 --pkg cairo -X -lxkbcommon
 #--pkg gtk+-3.0 --pkg gdk-x11-3.0 --pkg cairo --pkg posix --pkg gmodule-2.0
 
