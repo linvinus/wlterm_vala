@@ -547,8 +547,8 @@ class TSMterm : Ltk.Widget {
 
 
       this.cell_width = ((int)extents.width + (str.length - 1)) / str.length;
-      this.cell_height = (int)extents.height+0;
-      this.cell_bearing = (int)extents.y_bearing-1;//one pixel offset
+      this.cell_height = (int)extents.height+3;
+      this.cell_bearing = (int)extents.y_bearing-3;//one pixel offset
 
 
       this.force_redraw=true;//redraw whole window
@@ -603,8 +603,9 @@ int main (string[] argv) {
   
   window.add(term);
 
-  window.show();
   window.size_request(800,600);
+  window.show();
+
   term.set_focus(true);
 
   Ltk.Global.run();

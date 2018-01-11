@@ -33,7 +33,7 @@ include ./ltk/Makefile
 
 VALA_FLAGS += -v
 VALA_FLAGS += --disable-warnings
-VALA_FLAGS += --save-temps -X -O0 -X -g
+VALA_FLAGS += --save-temps -X -O0 -X -g  -X -DLTK_DEBUG=1
 VALA_FLAGS += -X -DGETTEXT_PACKAGE=\"$(PRG_NAME)\" -X -DAY_GIT_HASH=\"$(GIT_HASH)\" -X -DAY_CHANGELOG_TAG=\"$(CHANGELOG_TAG)\"
 
 
