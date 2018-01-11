@@ -22,6 +22,8 @@ class TSMterm : Ltk.Widget {
   uint child_src;
   uint pty_idle_src=0;
   Tsm.Tsmage prev_age=0;
+  private Ltk.Allocation damage_region;
+  private uint draw_callback_timer;
 
 //~   Pango.FontDescription font_desc;
   
@@ -220,6 +222,8 @@ class TSMterm : Ltk.Widget {
       y2 = (uint)(cy2 / (double)this.cell_height);
       x1=( x1 > 0 ? x1 -1 : x1);x2+=1;
       y1=( y1 > 0 ? y1 -1 : y1);y2+=1;
+      
+      this.reset_damage();
 
 //~     	Tsm.Tsmage age = this.screen.draw(screen_draw_cb);
     	this.prev_age = this.screen.draw((screen,
@@ -281,6 +285,8 @@ class TSMterm : Ltk.Widget {
 
             cr2.rectangle(posx*this.cell_width, posy*this.cell_height, this.cell_width, this.cell_height);
             cr2.fill();
+            
+            this.damage(posx*this.cell_width,posy*this.cell_height,this.cell_width,this.cell_height);
 
             if(len>0){
               //text
@@ -326,6 +332,21 @@ class TSMterm : Ltk.Widget {
 
 
 //~     widget.get_window ().end_paint();//notify for single buffer mode
+
+      var win = get_top_window();
+      if(win != null){
+        var xcb = win.get_xcb_window();
+        xcb.reset_damage();
+        ltkdebug( "TERM **** damage xy=%u,%u wh=%u,%u",
+        this.damage_region.x,
+        this.damage_region.y,
+        this.damage_region.width-this.damage_region.x,
+        this.damage_region.height-this.damage_region.y);
+        xcb.damage(this.damage_region.x,
+                       this.damage_region.y,
+                       this.damage_region.width-this.damage_region.x,
+                       this.damage_region.height-this.damage_region.y );
+      }
 
     end = GLib.get_monotonic_time();
     var dtime=(end - start) / 1000;
@@ -584,6 +605,49 @@ class TSMterm : Ltk.Widget {
         ltkdebug("selection=%s",seltxt);
       }
     }
+
+    public void damage(uint x,uint y,uint width,uint height){
+//~       ltkdebug( "TERM **** damage");
+      this.damage_region.x = uint.min(this.damage_region.x, x);
+      this.damage_region.y = uint.min(this.damage_region.y, y);
+      this.damage_region.width = uint.max(this.damage_region.width, x+width);//x2
+      this.damage_region.height = uint.max(this.damage_region.height, y+height);//y2
+    }
+
+    public void reset_damage(){
+      this.damage_region.width = this.damage_region.height = 0;
+      this.damage_region.x = this.damage_region.y = (uint32)0xFFFFFFFF;
+    }
+
+/*    private void do_draw(){
+      this.draw_area(this.damage_region.x,
+                     this.damage_region.y,
+                     this.damage_region.width-this.damage_region.x,
+                     this.damage_region.height-this.damage_region.y );
+      this.reset_damage();
+    }
+    
+    private bool on_timeout(){
+      this.do_draw();
+      this.draw_callback_timer = 0;
+      return GLib.Source.REMOVE;//done
+    }
+
+    private void queue_draw(){
+      if(this.draw_callback_timer == 0){
+//~         GLib.Source.remove(draw_callback_timer);
+        this.draw_callback_timer = GLib.Timeout.add((1000/30),on_timeout);
+      }
+    }
+
+    public void cancel_draw(){
+      if(this.draw_callback_timer != 0){
+        GLib.Source.remove(draw_callback_timer);
+        draw_callback_timer=0;
+      }
+    }*/
+
+
 }//class TSMterm
 
 int main (string[] argv) {
