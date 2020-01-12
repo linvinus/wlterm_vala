@@ -27,6 +27,27 @@
 [CCode (cname = "xkb_keysym_to_utf32")]
 extern uint32 xkb_keysym_to_utf32(uint key);
 
+[SimpleType]
+[CCode (cname = "clock_t", has_type_id = false)]
+public struct posix_clock_t : uint64 {
+}
+
+[CCode (cname = "struct tms", destroy_function = "")]
+public struct posix_tms {
+posix_clock_t tms_utime;  /* user time */
+posix_clock_t tms_stime;  /* system time */
+posix_clock_t tms_cutime; /* user time of children */
+posix_clock_t tms_cstime; /* system time of children */
+}
+
+[CCode (cname = "times",cheader_filename = "sys/times.h")]
+extern posix_clock_t posixtimes (out posix_tms buffer);
+
+[CCode (cname = "cairo_show_glyphs")]
+extern void my_cairo_show_glyphs (Cairo.Context cr,
+                   [CCode (array_length = false)] unowned Cairo.Glyph[] glyphs,
+                   int num_glyphs);
+
 
 [CCode (lower_case_cprefix = "tsm_", cheader_filename = "libtsm.h")]
 namespace Tsm {

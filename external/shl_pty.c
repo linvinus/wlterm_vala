@@ -27,6 +27,7 @@
 #include "shl_pty.h"
 
 #define SHL_PTY_BUFSIZE 16384
+#define SIGUNUSED SIGSYS
 
 /*
  * Ring Buffer
