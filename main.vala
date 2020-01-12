@@ -253,6 +253,7 @@ class TSMterm : Ltk.Widget {
       uint8 Br=1, Bg=2, Bb=3;
       uint8 Fr=1, Fg=2, Fb=3;
       
+      int lastposx = -1;
       int lastposy = -1;
       uint lastinv = 0, lastcharcount = 0;
 
@@ -330,6 +331,7 @@ class TSMterm : Ltk.Widget {
 
 
             if(lastposy < 0) {
+              lastposx = (int)posx;
               lastposy = (int)posy;
               Br = br;
               Bg = bg;
@@ -347,24 +349,27 @@ class TSMterm : Ltk.Widget {
                  Fr != fr  ||
                  Fg != fg  ||
                  Fb != fb  ||
+                (lastposx+1) != posx ||
                 lastposy != posy ||
                 lastinv != attr.inverse){
+                  //concatenate sequential cells with same bg/fg
+                  // ((lastposx+1) != posx) and (lastposy != posy) - check for sequences
 
-                  cr2.set_source_rgb(
+                  cr2.set_source_rgb( 
                            Br/255.0,
                            Bg/255.0,
                            Bb/255.0);
-                  print("[%dx%d/%d] ",(int)posx,(int)posy,(int)lastposy);
+//~                   print("[%dx%d/%d] ",(int)posx,(int)posy,(int)lastposy);
                 //cr2.rectangle(posx*this.cell_width, posy*this.cell_height, this.cell_width, this.cell_height);
 //~                   cr2.rectangle( prevposx*this.cell_width, 
 //~                                  prevposy*this.cell_height, 
 //~                                  (lastposx-prevposx+1)*this.cell_width, 
 //~                                  this.cell_height);
-//~                   print("%dx%d w%dh%d\n",
-//~                                  (int)cairo_damage_region.x, 
-//~                                  (int)cairo_damage_region.y, 
-//~                                  (int)(cairo_damage_region.width-cairo_damage_region.x), 
-//~                                  (int)(cairo_damage_region.height-cairo_damage_region.y) );
+//~                   print(" - %dx%d w%dh%d - ",
+//~                                  (int)((int)cairo_damage_region.x/this.cell_width), 
+//~                                  (int)((int)cairo_damage_region.y/this.cell_height), 
+//~                                  (int)(cairo_damage_region.width-cairo_damage_region.x)/(int)this.cell_width, 
+//~                                  (int)(cairo_damage_region.height-cairo_damage_region.y)/(int)this.cell_height );
                                  
                   cr2.rectangle( cairo_damage_region.x, 
                                  cairo_damage_region.y, 
@@ -376,7 +381,7 @@ class TSMterm : Ltk.Widget {
 //~                     print("e=%d ",(int)((Cairo.Glyph)dglyph[e]).x);
 //~                   }
 
-                  print("< %dc%d \n",(int)lastcharcount,(int)dglyph_len);
+//~                   print("< %dc%d \n",(int)lastcharcount,(int)dglyph_len);
                   
                   if( dglyph_len > 0 ){
                     cr2.set_source_rgb(
@@ -510,16 +515,15 @@ class TSMterm : Ltk.Widget {
 
 
 
+        lastposx = (int)posx;
         lastposy = (int)posy;
 
         return 0;
         });
 /********/
 
-//~   if( lastposx >= prevposx || dglyph_len >0 ){
-//~     prevposx++;
-  if( 1 == 1){
-    print("{%d %d} ",(int)lastposy,(int)dglyph_len);
+    //draw last part that was not drawn in loop
+//~     print("{%d %d} ",(int)lastposy,(int)dglyph_len);
     cr2.set_source_rgb(
              Br/255.0,
              Bg/255.0,
@@ -543,7 +547,6 @@ class TSMterm : Ltk.Widget {
     }
 
 //~     print("{%dx%d/%dx%d} ",(int)prevposx,(int)prevposy,(int)lastposx,(int)lastposy);
-  }
 
 //~   this.prev_age++;//<=
 
