@@ -7,9 +7,6 @@ using Ltk;
 //~ const Gdk.ModifierType ALL_MODS = (Gdk.ModifierType.SHIFT_MASK | Gdk.ModifierType.LOCK_MASK | Gdk.ModifierType.CONTROL_MASK |	  Gdk.ModifierType.MOD1_MASK | Gdk.ModifierType.MOD4_MASK);
 
 
-class terminal_renderer {
-  HashTable<string, int> glyphs;
-}
 
 class TSMterm : Ltk.Widget {
   Tsm.Screen screen;
@@ -23,7 +20,6 @@ class TSMterm : Ltk.Widget {
   uint pty_idle_src=0;
   Tsm.Tsmage prev_age=0;
   private Ltk.Allocation damage_region;
-  private Ltk.Allocation damage_region_term;
   private uint draw_callback_timer;
 
 //~   Pango.FontDescription font_desc;
@@ -44,8 +40,7 @@ class TSMterm : Ltk.Widget {
 	uint columns;
 	uint rows;
   bool initialized=false;
-  unowned Cairo.Glyph glyphs[256]; //accii
-//~   HashTable<void*, unowned Cairo.Glyph?> glyphs;
+  HashTable<uint32?, uint32> glyphs; //unicode to gliph
 
 
   void mylog(
@@ -242,7 +237,11 @@ class TSMterm : Ltk.Widget {
       y1=( y1 > 0 ? y1 -1 : y1);y2+=1;
       
       this.reset_damage(ref this.damage_region);
-      this.reset_damage(ref this.damage_region_term);
+      
+      Ltk.Allocation cairo_damage_region={};
+      
+      this.reset_damage(ref cairo_damage_region);
+      
 //~       GenericArray<Cairo.Glyph?> dglyph = new GenericArray<Cairo.Glyph?> ();
 //~     [CCode (array_length_type = "cairo_glyph_t*")]
       Cairo.Glyph dglyph[500];
@@ -253,8 +252,9 @@ class TSMterm : Ltk.Widget {
       uint8 fr=0, fg=0, fb=0, br=0, bg=0, bb=0;
       uint8 Br=1, Bg=2, Bb=3;
       uint8 Fr=1, Fg=2, Fb=3;
-      int prevposx = -1, prevposy = -1;
-      int lastposx = -1, lastposy = -1;
+      
+      int lastposy = -1;
+      uint lastinv = 0, lastcharcount = 0;
 
     	this.prev_age = this.screen.draw((screen,
 				   id,
@@ -278,7 +278,11 @@ class TSMterm : Ltk.Widget {
 
             }
             charscount++;
-            this.damage(ref this.damage_region,      posx*this.cell_width,posy*this.cell_height,this.cell_width,this.cell_height);
+            lastcharcount++;
+            this.damage(ref this.damage_region, posx*this.cell_width,
+                                                posy*this.cell_height,
+                                                this.cell_width,
+                                                this.cell_height);
 
 
 
@@ -302,7 +306,7 @@ class TSMterm : Ltk.Widget {
               bb = attr.bb;
             }
 
-//~             print("(%dx%d/%dx%d %2x%2x%2x %2x%2x%2x i%dc%dl%d) ",(int)prevposx,(int)prevposy,(int)lastposx,(int)lastposy,(int)br,(int)bg,(int)bb,(int)fr,(int)fg,(int)fb,(int)attr.inverse,(int)*ch,(int)dglyph_len);
+//~             print("(%dx%d %2x%2x%2x %2x%2x%2x i%dc%dl%d) ",(int)posx,(int)posy,(int)br,(int)bg,(int)bb,(int)fr,(int)fg,(int)fb,(int)attr.inverse,(int)*ch,(int)dglyph_len);
 
             
 //~                   cr2.set_source_rgb(
@@ -325,9 +329,8 @@ class TSMterm : Ltk.Widget {
 
 
 
-            if(prevposx < 0) {
-              lastposx = prevposx = (int)posx;
-              lastposy = prevposy = (int)posy;
+            if(lastposy < 0) {
+              lastposy = (int)posy;
               Br = br;
               Bg = bg;
               Bb = bb;
@@ -335,44 +338,47 @@ class TSMterm : Ltk.Widget {
               Fr = fr;
               Fg = fg;
               Fb = fb;
-            }
-
-
+              
+              lastinv = attr.inverse;
+            }else
               if(Br != br  ||
                  Bg != bg  ||
                  Bb != bb  ||
                  Fr != fr  ||
                  Fg != fg  ||
                  Fb != fb  ||
-                prevposy != posy){
+                lastposy != posy ||
+                lastinv != attr.inverse){
 
                   cr2.set_source_rgb(
                            Br/255.0,
                            Bg/255.0,
                            Bb/255.0);
-//~                   print("[%dx%d/%dx%d %d] ",(int)prevposx,(int)prevposy,(int)posx,(int)posy,(int)dglyph.length);
+                  print("[%dx%d/%d] ",(int)posx,(int)posy,(int)lastposy);
                 //cr2.rectangle(posx*this.cell_width, posy*this.cell_height, this.cell_width, this.cell_height);
 //~                   cr2.rectangle( prevposx*this.cell_width, 
 //~                                  prevposy*this.cell_height, 
 //~                                  (lastposx-prevposx+1)*this.cell_width, 
 //~                                  this.cell_height);
 //~                   print("%dx%d w%dh%d\n",
-//~                                  (int)this.damage_region_term.x, 
-//~                                  (int)this.damage_region_term.y, 
-//~                                  (int)(this.damage_region_term.width-this.damage_region_term.x), 
-//~                                  (int)(this.damage_region_term.height-this.damage_region_term.y) );
+//~                                  (int)cairo_damage_region.x, 
+//~                                  (int)cairo_damage_region.y, 
+//~                                  (int)(cairo_damage_region.width-cairo_damage_region.x), 
+//~                                  (int)(cairo_damage_region.height-cairo_damage_region.y) );
                                  
-                  cr2.rectangle( this.damage_region_term.x, 
-                                 this.damage_region_term.y, 
-                                 this.damage_region_term.width-this.damage_region_term.x, 
-                                 this.damage_region_term.height-this.damage_region_term.y);
+                  cr2.rectangle( cairo_damage_region.x, 
+                                 cairo_damage_region.y, 
+                                 cairo_damage_region.width-cairo_damage_region.x, 
+                                 cairo_damage_region.height-cairo_damage_region.y);
                   cr2.fill();
 
 //~                   for(var e=0;e<dglyph.length;e++){
 //~                     print("e=%d ",(int)((Cairo.Glyph)dglyph[e]).x);
 //~                   }
+
+                  print("< %dc%d \n",(int)lastcharcount,(int)dglyph_len);
                   
-                  if(prevposy == posy && dglyph_len>0){
+                  if( dglyph_len > 0 ){
                     cr2.set_source_rgb(
                              Fr/255.0,
                              Fg/255.0,
@@ -384,8 +390,6 @@ class TSMterm : Ltk.Widget {
                     dglyph_len=0;
                 }
                   
-                  prevposx = (int)lastposx;
-                  prevposy = (int)lastposy;
                   Br = br;
                   Bg = bg;
                   Bb = bb;
@@ -393,13 +397,17 @@ class TSMterm : Ltk.Widget {
                   Fr = fr;
                   Fg = fg;
                   Fb = fb;
-//~                   print("<\n");
-                  this.reset_damage(ref this.damage_region_term);
-
-                
+                  this.reset_damage(ref cairo_damage_region);
+                  
+                  lastinv = attr.inverse;
+                  lastcharcount=0;
                 }
             
-            this.damage(ref this.damage_region_term, posx*this.cell_width,posy*this.cell_height,this.cell_width,this.cell_height);
+            this.damage(ref cairo_damage_region, 
+                        posx*this.cell_width,
+                        posy*this.cell_height,
+                        this.cell_width,
+                        this.cell_height);
 
 
 //~             cr2.set_source_rgb(
@@ -434,11 +442,32 @@ class TSMterm : Ltk.Widget {
 //~                 ddd[0].index =this.glyphs[*ch & 0xFF ].index;
 //~                 ddd[0].x=x;
 //~                 ddd[0].y=y;
-                uint32  u = *ch & 0xFF ;
-                this.glyphs[u].x=x;
-                this.glyphs[u].y=y;
+//~                 uint32  u = *ch & 0xFF ;
+//~                 this.glyphs[u].x=x;
+//~                 this.glyphs[u].y=y;
+                uint32? index = this.glyphs.lookup(*ch);
+//~                 print("ch=%d index=%d\n",(int)*ch,(int)index);
+                if(index != 0){
+                  dglyph[dglyph_len].index = index;
+                }else{
+                  Cairo.Glyph[] ddd;
 
-                dglyph[dglyph_len++]=this.glyphs[u];
+                  string?  val=((string32)ch).to_utf8(1);
+                  
+                  var font = cr2.get_scaled_font ();
+                  font.text_to_glyphs (0, 0,
+                            val, (int)val.length,
+                            out  ddd,
+                            null, null);
+                  
+                  if(ddd != null){
+                    this.glyphs.insert(*ch, (uint32)ddd[0].index);
+                    dglyph[dglyph_len].index = ddd[0].index;
+                  }
+
+                }
+                dglyph[dglyph_len].x = x;
+                dglyph[dglyph_len++].y = y;
                 
 
 //~                 ddd[0]=this.glyphs['a'];
@@ -481,40 +510,34 @@ class TSMterm : Ltk.Widget {
 
 
 
-        lastposx = (int)posx;
         lastposy = (int)posy;
 
         return 0;
         });
 /********/
 
-  if(lastposx >= prevposx || dglyph_len >0){
-    prevposx++;
-//~   if( 1 == 0){
-    print("{%dx%d/%dx%d %d} ",(int)prevposx,(int)prevposy,(int)lastposx,(int)lastposy,(int)dglyph_len);
+//~   if( lastposx >= prevposx || dglyph_len >0 ){
+//~     prevposx++;
+  if( 1 == 1){
+    print("{%d %d} ",(int)lastposy,(int)dglyph_len);
     cr2.set_source_rgb(
              Br/255.0,
              Bg/255.0,
              Bb/255.0);
-  //cr2.rectangle(posx*this.cell_width, posy*this.cell_height, this.cell_width, this.cell_height);
-//~     cr2.rectangle( prevposx*this.cell_width, 
-//~                    prevposy*this.cell_height, 
-//~                    (lastposx-prevposx+1)*this.cell_width, 
-//~                    this.cell_height);
 
-                  cr2.rectangle( this.damage_region_term.x, 
-                                 this.damage_region_term.y, 
-                                 this.damage_region_term.width-this.damage_region_term.x, 
-                                 this.damage_region_term.height-this.damage_region_term.y);
+    cr2.rectangle( cairo_damage_region.x, 
+                   cairo_damage_region.y, 
+                   cairo_damage_region.width-cairo_damage_region.x, 
+                   cairo_damage_region.height-cairo_damage_region.y);
 
     cr2.fill();
 
 
-    if(dglyph_len>0){
+    if(dglyph_len > 0){
       cr2.set_source_rgb(
-               fr/255.0,
-               fg/255.0,
-               fb/255.0);
+               Fr/255.0,
+               Fg/255.0,
+               Fb/255.0);
       my_cairo_show_glyphs(cr2,(Cairo.Glyph[])dglyph,dglyph_len);
       dglyph_len=0;
     }
@@ -654,7 +677,7 @@ class TSMterm : Ltk.Widget {
   public TSMterm(){
       this.min_width = 50;
       this.min_height = 50;
-//~       this.glyphs = new HashTable<void*, unowned Cairo.Glyph?> (int_hash, int_equal);
+      this.glyphs = new HashTable<uint32?, uint32> (int_hash, int_equal);
 
 
 
@@ -815,8 +838,8 @@ class TSMterm : Ltk.Widget {
   //~         unowned Cairo.Glyph[]? glyphstmp2  = glyphstmp;
   //~         void* p = (void*)&glyphstmp2[i];
   //~         int i32 = (int)c32;
-  //~         glyphs.insert(&c32,(Cairo.Glyph?)p);
-          this.glyphs[ (c32 & 0xFF) ] = (Cairo.Glyph?)&glyphstmp[i];
+          glyphs.insert(c32,(uint32)glyphstmp[i].index);
+//~           this.glyphs[ (c32 & 0xFF) ] = (Cairo.Glyph?)&glyphstmp[i];
         }
       }
 
